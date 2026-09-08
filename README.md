@@ -1,3 +1,9 @@
+# M5Stack Tab5 Port of SolarOS
+
+Vibe Coded
+It is up and running with Screen, HW Keyboard, Wifi and SDCard all working so far.
+More to come...
+
 # SolarOS
 
 SolarOS is a small ESP32 operating environment for pocket terminals,
