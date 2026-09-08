@@ -49,7 +49,11 @@
 #include "solar_os_port_shell.h"
 #include "solar_os_power.h"
 #if SOLAR_OS_BOARD_HAS_POINTER
+#if defined(SOLAR_OS_BOARD_POINTER_M5TAB5)
+#include "touch_m5tab5.h"
+#else
 #include "solar_os_ft6336.h"
+#endif
 #endif
 #include "solar_os_radio.h"
 #include "solar_os_rtc.h"
@@ -1177,11 +1181,7 @@ static void dispatch_input_key(const solar_os_input_key_event_t *event)
         return;
     }
 
-    const bool tui_fullscreen_altgr =
-        (event->modifiers & SOLAR_OS_INPUT_MOD_RIGHT_ALT) != 0 &&
-        (event->key == SOLAR_OS_KEY_ENTER || event->key == '\r');
-    if (((event->modifiers & SOLAR_OS_INPUT_MOD_LEFT_ALT) != 0 ||
-         tui_fullscreen_altgr) &&
+    if ((event->modifiers & SOLAR_OS_INPUT_MOD_LEFT_ALT) != 0 &&
         event->key != SOLAR_OS_KEY_APP_EXIT) {
         const char prefix = (char)SOLAR_OS_KEY_ALT_PREFIX;
         dispatch_input_chars(&prefix, 1);
@@ -1258,7 +1258,11 @@ static void poll_local_input_sources(void)
 {
 #if SOLAR_OS_BOARD_HAS_POINTER
     if (board_has(SOLAR_OS_BOARD_CAP_POINTER)) {
+#if defined(SOLAR_OS_BOARD_POINTER_M5TAB5)
+        touch_m5tab5_poll();
+#else
         solar_os_ft6336_poll();
+#endif
     }
 #endif
 #if SOLAR_OS_PACKAGE_SERVICE_BUTTONS
@@ -1673,6 +1677,19 @@ void app_main(void)
     if (terminal != NULL) {
         const bool shell_started = solar_os_sessions_switch_to_app(solar_os_shell_app());
         ESP_LOGI(TAG, "boot milestone: shell switch=%s", shell_started ? "ok" : "failed");
+#if SOLAR_OS_BOARD_HAS_CDC
+        if (board_has(SOLAR_OS_BOARD_CAP_CDC)) {
+            uint8_t cdc_session_id = 0;
+            const esp_err_t cdc_err =
+                solar_os_port_shell_start(&os_ctx, SOLAR_OS_CDC_PORT_NAME, false, &cdc_session_id);
+            if (cdc_err == ESP_OK) {
+                SOLAR_OS_LOGI(TAG,
+                              "CDC shell session %u started on %s",
+                              (unsigned)cdc_session_id,
+                              SOLAR_OS_CDC_PORT_NAME);
+            }
+        }
+#endif
     } else {
         start_headless_shell_if_needed();
     }

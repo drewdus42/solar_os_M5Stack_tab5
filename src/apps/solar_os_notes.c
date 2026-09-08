@@ -503,22 +503,13 @@ static size_t notes_preamble_visible_rows(size_t body_rows)
     return visible;
 }
 
-static size_t notes_footer_rows(void)
-{
-    if (!solar_os_tui_screen_fullscreen(&notes.tui)) {
-        return NOTES_FOOTER_ROWS;
-    }
-    return notes.input_mode != NOTES_INPUT_NONE ? 1U : 0U;
-}
-
 static size_t notes_list_rows(void)
 {
     const size_t rows = solar_os_tui_rows(&notes.tui);
-    const size_t footer_rows = notes_footer_rows();
-    if (rows <= 1U + footer_rows) {
+    if (rows <= 1U + NOTES_FOOTER_ROWS) {
         return 0;
     }
-    const size_t body = rows - 1U - footer_rows;
+    const size_t body = rows - 1U - NOTES_FOOTER_ROWS;
     const size_t preamble_rows = notes_preamble_visible_rows(body);
     return body > preamble_rows ? body - preamble_rows : 0;
 }
@@ -634,16 +625,15 @@ static void notes_render(solar_os_context_t *ctx)
         solar_os_tui_refresh(&notes.tui);
         return;
     }
-    const size_t footer_rows = notes_footer_rows();
-    if (rows <= 1U + footer_rows) {
+    if (rows <= 1U + NOTES_FOOTER_ROWS) {
         solar_os_tui_draw_help(&notes.tui, notes_help_text());
         solar_os_tui_refresh(&notes.tui);
         return;
     }
 
     size_t row = 1;
-    const size_t detail_row = rows - footer_rows;
-    const size_t body_rows = rows - 1U - footer_rows;
+    const size_t detail_row = rows - NOTES_FOOTER_ROWS;
+    const size_t body_rows = rows - 1U - NOTES_FOOTER_ROWS;
     const size_t preamble_rows = notes_preamble_visible_rows(body_rows);
     for (size_t i = 0; i < preamble_rows && row < detail_row; i++, row++) {
         solar_os_tui_write_cell(&notes.tui, row, 0, cols, notes.preamble[i], SOLAR_OS_TUI_ATTR_NORMAL);
@@ -658,9 +648,7 @@ static void notes_render(solar_os_context_t *ctx)
         notes_render_row(&notes.view[notes.top + visible], row + visible, cols);
     }
 
-    if (!solar_os_tui_screen_fullscreen(&notes.tui)) {
-        solar_os_tui_draw_help(&notes.tui, notes_help_text());
-    }
+    solar_os_tui_draw_help(&notes.tui, notes_help_text());
     if (notes.input_mode != NOTES_INPUT_NONE) {
         const char *label = notes_input_label();
         solar_os_tui_input_state_t input_state = {
@@ -671,8 +659,6 @@ static void notes_render(solar_os_context_t *ctx)
                                 notes.input, &input_state,
                                 SOLAR_OS_TUI_ATTR_NORMAL);
         notes.input_view_offset = input_state.view;
-    } else if (solar_os_tui_screen_fullscreen(&notes.tui)) {
-        solar_os_tui_draw_footer(&notes.tui, notes.message, NULL);
     } else {
         solar_os_tui_write_cell(&notes.tui, detail_row,
                          0,

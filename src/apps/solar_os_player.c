@@ -459,8 +459,7 @@ static void player_render_tui(void)
         player.track_count;
     size_t cursor = player.browsing ? solar_os_storage_browser_cursor(player.browser) :
         player.cursor;
-    const size_t list_rows = solar_os_tui_screen_content_rows(
-        &player.tui, 1U, 1U);
+    const size_t list_rows = rows - 3U;
     if (cursor < player.top) player.top = cursor;
     if (cursor >= player.top + list_rows) player.top = cursor - list_rows + 1U;
     for (size_t row = 0U; row < list_rows; row++) {
@@ -496,10 +495,7 @@ static void player_render_tui(void)
         snprintf(status, sizeof(status), "%s %s / %s | Up/Down  Enter play/stop  Space pause  A add  Del remove  Esc exit",
                  player_state_symbol(), elapsed, total);
     }
-    solar_os_tui_draw_footer(
-        &player.tui,
-        player.playback_state == PLAYER_ERROR ? player.message : NULL,
-        status);
+    solar_os_tui_draw_help(&player.tui, status);
     solar_os_tui_set_cursor_visible(&player.tui, false);
     solar_os_tui_refresh(&player.tui);
 }

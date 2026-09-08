@@ -14,9 +14,7 @@
 #include "solar_os_scheduler.h"
 #include "solar_os_shell.h"
 #include "solar_os_shell_io.h"
-#include "solar_os_keys.h"
 #include "solar_os_terminal_internal.h"
-#include "solar_os_tui_widgets.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -58,7 +56,6 @@ typedef struct {
     solar_os_gfx_snapshot_t *graphics_snapshot;
     solar_os_shell_io_t *io;
     solar_os_shell_session_t *shell_session;
-    solar_os_tui_t *tui;
     char display_target[SOLAR_OS_DISPLAY_TARGET_NAME_MAX];
     char display_owner[SOLAR_OS_DISPLAY_TARGET_OWNER_MAX];
     char title[SOLAR_OS_SESSION_TITLE_MAX];
@@ -76,7 +73,6 @@ typedef struct {
     void *user;
     const solar_os_app_t *foreground_app;
     bool foreground_app_claimed;
-    solar_os_tui_t *legacy_tui;
     solar_os_session_entry_t sessions[SOLAR_OS_SESSION_MAX];
     solar_os_session_entry_t *foreground_session;
     bool legacy_return_session_valid;
@@ -901,43 +897,6 @@ static solar_os_session_entry_t *session_find_by_terminal(const solar_os_termina
         }
     }
     return NULL;
-}
-
-static solar_os_session_entry_t *session_find_by_io(const solar_os_shell_io_t *io)
-{
-    if (io == NULL) {
-        return NULL;
-    }
-    for (size_t i = 0; i < SOLAR_OS_SESSION_MAX; i++) {
-        solar_os_session_entry_t *session = &session_state.sessions[i];
-        if ((session->used || session->reserved) &&
-            session_shell_io(session) == io) {
-            return session;
-        }
-    }
-    return NULL;
-}
-
-void solar_os_sessions_attach_tui(solar_os_shell_io_t *io, solar_os_tui_t *tui)
-{
-    solar_os_session_entry_t *session = session_find_by_io(io);
-    if (session != NULL) {
-        session->tui = tui;
-    } else if (session_state.ctx != NULL &&
-               solar_os_context_shell_io(session_state.ctx) == io) {
-        session_state.legacy_tui = tui;
-    }
-}
-
-void solar_os_sessions_detach_tui(solar_os_shell_io_t *io, const solar_os_tui_t *tui)
-{
-    solar_os_session_entry_t *session = session_find_by_io(io);
-    if (session != NULL && session->tui == tui) {
-        session->tui = NULL;
-    }
-    if (session_state.legacy_tui == tui) {
-        session_state.legacy_tui = NULL;
-    }
 }
 
 static bool session_terminal_setting_is_persistent(const solar_os_session_entry_t *session)
@@ -2020,23 +1979,6 @@ static void dispatch_session_event(solar_os_session_entry_t *session,
         return;
     }
 
-    bool tui_control_consumed = false;
-    bool tui_alt_passthrough = false;
-    if (event->type == SOLAR_OS_EVENT_CHAR && session->tui != NULL) {
-        const solar_os_tui_screen_key_action_t action =
-            solar_os_tui_screen_key(session->tui, (uint8_t)event->data.ch);
-        if (action != SOLAR_OS_TUI_SCREEN_KEY_NONE) {
-            if (action == SOLAR_OS_TUI_SCREEN_KEY_TOGGLED) {
-                session->terminal_redraw_requested = true;
-                tui_control_consumed = true;
-            } else if (action == SOLAR_OS_TUI_SCREEN_KEY_PASSTHROUGH) {
-                tui_alt_passthrough = true;
-            } else {
-                return;
-            }
-        }
-    }
-
     if (session->terminal_redraw_requested) {
         session->terminal_redraw_requested = false;
         session_prepare_context(session);
@@ -2053,18 +1995,8 @@ static void dispatch_session_event(solar_os_session_entry_t *session,
             session_restore_graphics_snapshot(session);
         }
     }
-    if (tui_control_consumed) {
-        return;
-    }
     if (session->app->event == NULL) {
         return;
-    }
-    if (tui_alt_passthrough) {
-        const solar_os_event_t alt_event = {
-            .type = SOLAR_OS_EVENT_CHAR,
-            .data.ch = (char)SOLAR_OS_KEY_ALT_PREFIX,
-        };
-        (void)session->app->event(session_state.ctx, &alt_event);
     }
 
     const bool tick = event->type == SOLAR_OS_EVENT_TICK;
@@ -2108,35 +2040,6 @@ static void dispatch_legacy_event(const solar_os_event_t *event)
     if (session_state.legacy_tick_app != app) {
         session_state.legacy_tick_app = app;
         solar_os_tick_stats_reset(&session_state.legacy_tick_stats);
-    }
-
-    bool tui_alt_passthrough = false;
-    if (event->type == SOLAR_OS_EVENT_CHAR && session_state.legacy_tui != NULL) {
-        const solar_os_tui_screen_key_action_t action =
-            solar_os_tui_screen_key(session_state.legacy_tui,
-                                    (uint8_t)event->data.ch);
-        if (action == SOLAR_OS_TUI_SCREEN_KEY_TOGGLED) {
-            if (app->resume != NULL) {
-                app->resume(session_state.ctx);
-            } else {
-                const solar_os_event_t resume_event = {
-                    .type = SOLAR_OS_EVENT_RESUME,
-                };
-                (void)app->event(session_state.ctx, &resume_event);
-            }
-            return;
-        }
-        if (action == SOLAR_OS_TUI_SCREEN_KEY_CONSUMED) {
-            return;
-        }
-        tui_alt_passthrough = action == SOLAR_OS_TUI_SCREEN_KEY_PASSTHROUGH;
-    }
-    if (tui_alt_passthrough) {
-        const solar_os_event_t alt_event = {
-            .type = SOLAR_OS_EVENT_CHAR,
-            .data.ch = (char)SOLAR_OS_KEY_ALT_PREFIX,
-        };
-        (void)app->event(session_state.ctx, &alt_event);
     }
 
     const bool tick = event->type == SOLAR_OS_EVENT_TICK;

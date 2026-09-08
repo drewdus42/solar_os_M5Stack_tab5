@@ -419,8 +419,8 @@ static void io_pin_summary(const solar_os_pin_info_t *pin,
 
 static size_t io_content_rows(void)
 {
-    const size_t rows = solar_os_tui_screen_content_rows(&io.tui, 2U, 2U);
-    return rows > 0U ? rows : 1U;
+    const size_t rows = solar_os_tui_rows(&io.tui);
+    return rows > 4U ? rows - 4U : 1U;
 }
 
 static size_t io_view_count(io_view_t view)
@@ -589,8 +589,7 @@ static void io_render_layout(void)
     snprintf(heading, sizeof(heading), " %s — %s", layout.title, layout.view);
     io_write_row(1, heading, SOLAR_OS_TUI_ATTR_BOLD);
 
-    const size_t content_rows = solar_os_tui_screen_content_rows(&io.tui, 2U, 2U);
-    const size_t grid_rows = content_rows > 1U ? content_rows - 1U : 1U;
+    const size_t grid_rows = rows > 6U ? rows - 5U : 1U;
     const size_t visible_rows = layout.rows < grid_rows ? layout.rows : grid_rows;
     const size_t row_start = io_scroll_start(selected.row, layout.rows, visible_rows);
     size_t visible_columns = cols / 8U;
@@ -650,9 +649,8 @@ static void io_render_layout(void)
                                          SOLAR_OS_TUI_ATTR_NORMAL);
         }
     }
-    const size_t content_end = solar_os_tui_screen_content_end(&io.tui, 2U);
-    if (content_end > 2U) {
-        io_render_layout_detail(content_end - 1U);
+    if (rows >= 4U) {
+        io_render_layout_detail(rows - 3U);
     }
 }
 
@@ -865,9 +863,7 @@ static void io_render_browse(void)
     default:
         break;
     }
-    if (solar_os_tui_screen_fullscreen(&io.tui)) {
-        solar_os_tui_draw_footer(&io.tui, io.message, NULL);
-    } else if (rows >= 2U) {
+    if (rows >= 2U) {
         io_write_row(rows - 2U, io.message, SOLAR_OS_TUI_ATTR_NORMAL);
         solar_os_tui_draw_help(
             &io.tui,
@@ -1285,8 +1281,7 @@ static void io_render_actions(void)
     if (io.action_count == 0) {
         io_write_row(2, " No available actions for this fixed or externally owned resource.", SOLAR_OS_TUI_ATTR_NORMAL);
     }
-    const size_t content_end = solar_os_tui_screen_content_end(&io.tui, 1U);
-    for (size_t i = 0; i < io.action_count && 2U + i < content_end; i++) {
+    for (size_t i = 0; i < io.action_count && 2U + i + 1U < rows; i++) {
         char line[64];
         snprintf(line, sizeof(line), " %c %s", i == io.action_selected ? '>' : ' ', io.actions[i].label);
         io_write_row(2U + i,
@@ -1591,8 +1586,7 @@ static void io_render_form(void)
     const size_t rows = solar_os_tui_rows(&io.tui);
     const size_t cols = solar_os_tui_cols(&io.tui);
     const size_t count = io_form_field_count();
-    const size_t content_rows = solar_os_tui_screen_content_rows(&io.tui, 1U, 2U);
-    const size_t visible = content_rows > 0U ? content_rows : 1U;
+    const size_t visible = rows > 3U ? rows - 3U : 1U;
     const size_t start = io_scroll_start(io.form.selected, count, visible);
     char title[64];
     snprintf(title, sizeof(title), " Create %s bus", solar_os_bus_protocol_name(io.form.protocol));
@@ -1615,9 +1609,7 @@ static void io_render_form(void)
                      line,
                      index == io.form.selected ? SOLAR_OS_TUI_ATTR_INVERSE : SOLAR_OS_TUI_ATTR_NORMAL);
     }
-    if (solar_os_tui_screen_fullscreen(&io.tui)) {
-        solar_os_tui_draw_footer(&io.tui, io.message, NULL);
-    } else if (rows >= 2U) {
+    if (rows >= 2U) {
         io_write_row(rows - 2U, io.message, SOLAR_OS_TUI_ATTR_NORMAL);
     }
     if (rows > 0) {
@@ -1906,9 +1898,8 @@ static void io_render(void)
         snprintf(heading, sizeof(heading), " I2C speed - %s", io.selected_bus);
         io_write_row(0, heading,
                      SOLAR_OS_TUI_ATTR_INVERSE | SOLAR_OS_TUI_ATTR_BOLD);
-        const size_t content_end = solar_os_tui_screen_content_end(&io.tui, 1U);
         for (size_t i = 0; i < sizeof(i2c_rates) / sizeof(i2c_rates[0]) &&
-                           2U + i < content_end; i++) {
+                           2U + i + 1U < rows; i++) {
             char line[40];
             snprintf(line, sizeof(line), " %c %" PRIu32 " Hz",
                      i == io.i2c_rate_selected ? '>' : ' ', i2c_rates[i]);

@@ -42,13 +42,6 @@ Exit behavior:
   Either Alt key is accepted, including AltGr on compact keyboards.
   Switching back restores the retained terminal or graphics frame, including
   Python and Lua application screens.
-- `Alt+Enter` toggles full-screen mode in applications that use the shared TUI.
-  Either Alt key is accepted, including AltGr; on the CL-32 keyboard, use
-  `File+OK`. Full-screen mode hides the system status bar and persistent TUI
-  footer rows without changing the saved terminal profile. TUIs start in this
-  mode automatically when ten or fewer terminal rows are available. Input rows
-  remain visible, and status or error feedback can temporarily cover the last
-  content row.
 
 ## agent
 
@@ -1586,6 +1579,25 @@ Controls:
 - `Ctrl+F` opens Find and `F3` jumps to the next case-insensitive match in
   rendered page text, wrapping at the end.
 - `Esc` or app-exit key exits.
+
+## keylight
+
+KeyLight configures the M5Tab5 hardware keyboard backlight brightness and RGB LED status colors.
+It provides an interactive TUI to adjust brightness, select RGB modes, cycle color presets, and set custom hex colors in real-time. Settings are saved to NVS.
+
+Usage:
+
+```text
+keylight
+kbd
+```
+
+Controls:
+
+- `Up`/`Down`: Select setting (backlight, rgb mode, preset, hex color, red, green, blue).
+- `Left`/`Right` or `-`/`+`: Adjust brightness, toggle RGB mode, or cycle color presets in real time.
+- `Enter`: Edit custom hex color or numeric values.
+- `Esc` or `q`: Exit back to the shell.
 
 ## Quick reference
 

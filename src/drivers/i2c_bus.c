@@ -12,6 +12,9 @@
 
 static const char *TAG = "i2c_bus";
 
+static i2c_master_bus_handle_t bus_handles[I2C_NUM_MAX];
+static i2c_bus_config_t active_configs[I2C_NUM_MAX];
+static bool port_active[I2C_NUM_MAX];
 static i2c_master_bus_handle_t bus_handle;
 static SemaphoreHandle_t bus_mutex;
 static i2c_bus_config_t active_config;
@@ -64,6 +67,11 @@ static esp_err_t i2c_bus_start_config_locked(const i2c_bus_config_t *config,
                                              i2c_master_bus_handle_t *handle,
                                              bool *initialized_here)
 {
+    if (allow_existing && i2c_master_get_bus_handle(config->port, handle) == ESP_OK) {
+        *initialized_here = false;
+        return ESP_OK;
+    }
+
     i2c_master_bus_config_t bus_config = {
         .i2c_port = config->port,
         .sda_io_num = config->sda_pin,
@@ -113,8 +121,8 @@ esp_err_t i2c_bus_init_config(const i2c_bus_config_t *config)
     ESP_RETURN_ON_ERROR(i2c_bus_ensure_mutex(), TAG, "create I2C mutex failed");
 
     xSemaphoreTake(bus_mutex, portMAX_DELAY);
-    if (bus_handle != NULL) {
-        const esp_err_t ret = i2c_bus_config_equal(config, &active_config)
+    if (port_active[config->port] && bus_handles[config->port] != NULL) {
+        const esp_err_t ret = i2c_bus_config_equal(config, &active_configs[config->port])
             ? ESP_OK
             : ESP_ERR_INVALID_STATE;
         xSemaphoreGive(bus_mutex);
@@ -124,13 +132,18 @@ esp_err_t i2c_bus_init_config(const i2c_bus_config_t *config)
     bool initialized_here = false;
     const esp_err_t ret = i2c_bus_start_config_locked(config,
                                                        true,
-                                                       &bus_handle,
+                                                       &bus_handles[config->port],
                                                        &initialized_here);
     if (ret != ESP_OK) {
         xSemaphoreGive(bus_mutex);
         ESP_RETURN_ON_ERROR(ret, TAG, "new I2C bus failed");
     }
-    active_config = *config;
+    active_configs[config->port] = *config;
+    port_active[config->port] = true;
+    if (bus_handle == NULL) {
+        bus_handle = bus_handles[config->port];
+        active_config = *config;
+    }
     ESP_LOGI(TAG,
              "I2C bus ready: port=%d SDA=%d SCL=%d speed=%" PRIu32,
              config->port,
@@ -183,6 +196,15 @@ esp_err_t i2c_bus_stop_config(const i2c_bus_config_t *config,
 
     xSemaphoreTake(bus_mutex, portMAX_DELAY);
     ret = i2c_del_master_bus(handle);
+    if (config->port >= 0 && config->port < I2C_NUM_MAX) {
+        if (bus_handles[config->port] == handle) {
+            bus_handles[config->port] = NULL;
+            port_active[config->port] = false;
+        }
+    }
+    if (bus_handle == handle) {
+        bus_handle = NULL;
+    }
     xSemaphoreGive(bus_mutex);
     if (ret != ESP_OK) {
         return ret;
@@ -209,6 +231,11 @@ esp_err_t i2c_bus_set_speed(i2c_master_bus_handle_t handle,
     if (handle == bus_handle) {
         active_config.speed_hz = speed_hz;
     }
+    for (int p = 0; p < I2C_NUM_MAX; p++) {
+        if (bus_handles[p] == handle) {
+            active_configs[p].speed_hz = speed_hz;
+        }
+    }
     xSemaphoreGive(bus_mutex);
     return ESP_OK;
 }
@@ -216,6 +243,14 @@ esp_err_t i2c_bus_set_speed(i2c_master_bus_handle_t handle,
 i2c_master_bus_handle_t i2c_bus_get_handle(void)
 {
     return bus_handle;
+}
+
+i2c_master_bus_handle_t i2c_bus_get_port_handle(int port)
+{
+    if (port >= 0 && port < I2C_NUM_MAX) {
+        return bus_handles[port];
+    }
+    return NULL;
 }
 
 void i2c_bus_lock(void)

@@ -77,7 +77,7 @@ def profile_commands(board_id: str, base_id: str) -> tuple[str, str]:
 
 
 def available_base_profiles(manifest_dir: Path = MANIFEST_DIR) -> dict[str, list[tuple[Path, dict[str, Any]]]]:
-    result: dict[str, list[tuple[Path, dict[str, Any]]]] = {"esp32s3": [], "esp32": []}
+    result: dict[str, list[tuple[Path, dict[str, Any]]]] = {"esp32s3": [], "esp32": [], "esp32p4": []}
     for path in sorted(manifest_dir.glob("*.toml")):
         with path.open("rb") as file:
             raw = tomllib.load(file)
@@ -382,6 +382,7 @@ def _run_tui(
     bases = available_base_profiles(args.manifest_dir)
     mcu = screen.choose("Target MCU", [
         ("esp32s3", "ESP32-S3"),
+        ("esp32p4", "ESP32-P4"),
         ("esp32", "Classic ESP32"),
     ])
     if not bases[mcu]:

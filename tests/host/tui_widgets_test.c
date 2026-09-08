@@ -12,24 +12,6 @@ static uint32_t test_screen[TEST_ROWS][TEST_COLS];
 static size_t test_cursor_row;
 static size_t test_cursor_col;
 static bool test_cursor_visible;
-static size_t test_status_bar_calls;
-static bool test_status_bar_visible;
-
-esp_err_t solar_os_tui_enable_diff(solar_os_tui_t *tui, bool enabled)
-{
-    tui->diff_enabled = enabled;
-    return ESP_OK;
-}
-
-esp_err_t solar_os_terminal_set_status_bar_visible_transient(
-    solar_os_terminal_t *terminal,
-    bool visible)
-{
-    (void)terminal;
-    test_status_bar_calls++;
-    test_status_bar_visible = visible;
-    return ESP_OK;
-}
 
 size_t solar_os_tui_rows(const solar_os_tui_t *tui)
 {
@@ -112,56 +94,6 @@ static void test_layout(void)
     assert(layout.body.row == 2 && layout.body.height == 15);
     assert(layout.status.row == 17 && layout.input.row == 18 && layout.help.row == 19);
     assert(!solar_os_tui_layout_compute(5, 40, 1, 1, 1, &layout));
-
-    assert(solar_os_tui_layout_compute_fullscreen(10, 40, 1, 1, &layout));
-    assert(layout.title.row == 0 && layout.tabs.row == 1);
-    assert(layout.body.row == 2 && layout.body.height == 7);
-    assert(layout.status.height == 0 && layout.help.height == 0);
-    assert(layout.input.row == 9 && layout.input.height == 1);
-}
-
-static void test_fullscreen_key(void)
-{
-    solar_os_tui_t tui = {
-        .terminal = (solar_os_terminal_t *)(uintptr_t)1U,
-        .screen_active = true,
-        .saved_status_bar_visible = true,
-    };
-    assert(!solar_os_tui_screen_should_fullscreen(0));
-    assert(solar_os_tui_screen_should_fullscreen(10));
-    assert(!solar_os_tui_screen_should_fullscreen(11));
-    assert(!solar_os_tui_screen_fullscreen(&tui));
-    assert(solar_os_tui_screen_bottom_rows(&tui, 2) == 2);
-    assert(solar_os_tui_screen_content_rows(&tui, 1, 2) == 1);
-    assert(solar_os_tui_screen_content_end(&tui, 2) == 2);
-    assert(solar_os_tui_screen_key(&tui, SOLAR_OS_KEY_ALT_PREFIX) ==
-           SOLAR_OS_TUI_SCREEN_KEY_CONSUMED);
-    assert(solar_os_tui_screen_key(&tui, 'x') ==
-           SOLAR_OS_TUI_SCREEN_KEY_PASSTHROUGH);
-    assert(!solar_os_tui_screen_fullscreen(&tui));
-    assert(solar_os_tui_screen_key(&tui, SOLAR_OS_KEY_ALT_PREFIX) ==
-           SOLAR_OS_TUI_SCREEN_KEY_CONSUMED);
-    assert(solar_os_tui_screen_key(&tui, SOLAR_OS_KEY_ENTER) ==
-           SOLAR_OS_TUI_SCREEN_KEY_TOGGLED);
-    assert(solar_os_tui_screen_fullscreen(&tui));
-    assert(test_status_bar_calls == 1U && !test_status_bar_visible);
-    assert(solar_os_tui_screen_bottom_rows(&tui, 2) == 0);
-    assert(solar_os_tui_screen_content_rows(&tui, 1, 2) == 3);
-    assert(solar_os_tui_screen_content_end(&tui, 2) == 4);
-
-    memset(test_screen, 0, sizeof(test_screen));
-    assert(solar_os_tui_draw_footer(&tui, "saved", "help") == ESP_OK);
-    assert(test_screen[TEST_ROWS - 1U][0] == 's');
-    memset(test_screen, 0, sizeof(test_screen));
-    assert(solar_os_tui_draw_footer(&tui, "", "help") == ESP_OK);
-    assert(test_screen[TEST_ROWS - 1U][0] == 0U);
-
-    assert(solar_os_tui_screen_key(&tui, SOLAR_OS_KEY_ALT_PREFIX) ==
-           SOLAR_OS_TUI_SCREEN_KEY_CONSUMED);
-    assert(solar_os_tui_screen_key(&tui, SOLAR_OS_KEY_ENTER) ==
-           SOLAR_OS_TUI_SCREEN_KEY_TOGGLED);
-    assert(!solar_os_tui_screen_fullscreen(&tui));
-    assert(test_status_bar_calls == 2U && test_status_bar_visible);
 }
 
 static void test_input(void)
@@ -228,7 +160,6 @@ int main(void)
 {
     test_viewport();
     test_layout();
-    test_fullscreen_key();
     test_input();
     test_masked_input_draw();
     puts("tui_widgets_test: ok");

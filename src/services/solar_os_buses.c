@@ -723,7 +723,7 @@ static esp_err_t start_i2c_locked(size_t bus_index)
     if (buses[bus_index].origin == SOLAR_OS_BUS_ORIGIN_BOARD) {
         ret = i2c_bus_init_config(&driver_config);
         if (ret == ESP_OK) {
-            buses_i2c_handles[bus_index] = i2c_bus_get_handle();
+            buses_i2c_handles[bus_index] = i2c_bus_get_port_handle(config->port);
             buses_initialized_here[bus_index] = false;
         }
     } else {

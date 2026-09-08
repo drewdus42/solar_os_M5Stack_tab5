@@ -183,9 +183,6 @@ int main(void)
     assert(solar_os_input_translate_hid_usage(0x2b,
                                               SOLAR_OS_INPUT_MOD_RIGHT_ALT,
                                               false) == '\t');
-    assert(solar_os_input_translate_hid_usage(0x28,
-                                              SOLAR_OS_INPUT_MOD_RIGHT_ALT,
-                                              false) == SOLAR_OS_KEY_ENTER);
     assert(solar_os_input_set_keyboard_layout(SOLAR_OS_INPUT_KEYBOARD_LAYOUT_US) == ESP_OK);
 
     solar_os_input_source_t keyboard = SOLAR_OS_INPUT_SOURCE_INVALID;
@@ -332,37 +329,6 @@ int main(void)
     assert(diagnostics.has_key);
     assert(diagnostics.key_events > 0);
     assert(diagnostics.last_key.action == SOLAR_OS_INPUT_KEY_PRESS);
-
-    assert(solar_os_input_write_key(keyboard,
-                                    0x28,
-                                    0x28,
-                                    SOLAR_OS_KEY_ENTER,
-                                    SOLAR_OS_INPUT_MOD_RIGHT_ALT,
-                                    SOLAR_OS_INPUT_KEY_PRESS) == ESP_OK);
-    assert(solar_os_input_write_key(keyboard,
-                                    0x28,
-                                    0x28,
-                                    SOLAR_OS_KEY_ENTER,
-                                    SOLAR_OS_INPUT_MOD_RIGHT_ALT,
-                                    SOLAR_OS_INPUT_KEY_RELEASE) == ESP_OK);
-    assert(solar_os_input_read_source_chars(keyboard, chars, sizeof(chars)) == 2);
-    assert((uint8_t)chars[0] == SOLAR_OS_KEY_ALT_PREFIX);
-    assert(chars[1] == SOLAR_OS_KEY_ENTER);
-
-    assert(solar_os_input_write_key(keyboard,
-                                    0x14,
-                                    0x14,
-                                    '@',
-                                    SOLAR_OS_INPUT_MOD_RIGHT_ALT,
-                                    SOLAR_OS_INPUT_KEY_PRESS) == ESP_OK);
-    assert(solar_os_input_write_key(keyboard,
-                                    0x14,
-                                    0x14,
-                                    '@',
-                                    SOLAR_OS_INPUT_MOD_RIGHT_ALT,
-                                    SOLAR_OS_INPUT_KEY_RELEASE) == ESP_OK);
-    assert(solar_os_input_read_source_chars(keyboard, chars, sizeof(chars)) == 1);
-    assert(chars[0] == '@');
 
     solar_os_input_pointer_event_t pointer = {
         .pointer_id = 2,

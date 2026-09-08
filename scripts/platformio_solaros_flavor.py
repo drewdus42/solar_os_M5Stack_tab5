@@ -136,7 +136,6 @@ sdkconfig_default_files = tuple(sorted(project_dir.glob("sdkconfig.defaults*")))
 partition_files = tuple(sorted(project_dir.glob("partitions*.csv")))
 tracked_files = (
     flavor_file,
-    project_dir / "version.txt",
     project_dir / "packages" / "solar_os_packages.toml",
     project_dir / "scripts" / "generate_flavor_config.py",
     project_dir / "scripts" / "platformio_solaros_flavor.py",

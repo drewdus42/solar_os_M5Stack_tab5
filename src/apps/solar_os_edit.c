@@ -393,19 +393,11 @@ static uint8_t editor_hex_cell_attr(size_t index,
     return SOLAR_OS_TUI_ATTR_BOLD | SOLAR_OS_TUI_ATTR_UNDERLINE;
 }
 
-static size_t editor_text_rows(void)
-{
-    const size_t rows = solar_os_tui_rows(&editor.tui);
-    const size_t footer_rows = solar_os_tui_screen_fullscreen(&editor.tui) ?
-        (editor.search.input_active ? 1U : 0U) : 1U;
-    return rows > 1U + footer_rows ? rows - 1U - footer_rows : 0U;
-}
-
 static void editor_render_hex(void)
 {
     const size_t rows = solar_os_tui_rows(&editor.tui);
     const size_t cols = solar_os_tui_cols(&editor.tui);
-    const size_t text_rows = editor_text_rows();
+    const size_t text_rows = rows > 2U ? rows - 2U : 0U;
     const size_t bytes_per_row = editor_hex_bytes_per_row(cols);
     const size_t ascii_col = 9U + bytes_per_row * 3U + 2U;
     size_t selection_start = 0;
@@ -518,7 +510,7 @@ static void editor_render_hex(void)
                      (unsigned)editor.len,
                      (unsigned)(editor.capacity - 1U));
         }
-        solar_os_tui_draw_footer(&editor.tui, editor.message, footer);
+        solar_os_tui_draw_help(&editor.tui, footer);
     }
 
     if (text_rows > 0U) {
@@ -546,7 +538,7 @@ static void editor_render(solar_os_context_t *ctx)
 
     const size_t rows = solar_os_tui_rows(&editor.tui);
     const size_t cols = solar_os_tui_cols(&editor.tui);
-    const size_t text_rows = editor_text_rows();
+    const size_t text_rows = rows > 2 ? rows - 2 : 0;
     size_t cursor_line;
     size_t cursor_col;
     solar_os_syntax_state_t syntax_state;
@@ -657,10 +649,7 @@ static void editor_render(solar_os_context_t *ctx)
                      (unsigned)editor.len,
                      (unsigned)(editor.capacity - 1U));
         }
-        solar_os_tui_draw_footer(
-            &editor.tui,
-            editor.search.input_active || editor.message[0] != '\0' ? footer : NULL,
-            footer);
+        solar_os_tui_draw_help(&editor.tui, footer);
     }
 
     if (text_rows > 0 &&
@@ -984,8 +973,8 @@ static void editor_move_down(void)
 
 static void editor_page_up(void)
 {
-    const size_t page_rows = editor_text_rows();
-    const size_t page = page_rows > 0U ? page_rows : 1U;
+    const size_t rows = solar_os_tui_rows(&editor.tui);
+    const size_t page = rows > 2 ? rows - 2 : 1;
 
     for (size_t i = 0; i < page; i++) {
         editor_move_up();
@@ -994,8 +983,8 @@ static void editor_page_up(void)
 
 static void editor_page_down(void)
 {
-    const size_t page_rows = editor_text_rows();
-    const size_t page = page_rows > 0U ? page_rows : 1U;
+    const size_t rows = solar_os_tui_rows(&editor.tui);
+    const size_t page = rows > 2 ? rows - 2 : 1;
 
     for (size_t i = 0; i < page; i++) {
         editor_move_down();
@@ -1075,8 +1064,8 @@ static void editor_hex_move_document_end(void)
 
 static void editor_hex_page(bool down)
 {
-    const size_t content_rows = editor_text_rows();
-    const size_t visible_rows = content_rows > 0U ? content_rows : 1U;
+    const size_t rows = solar_os_tui_rows(&editor.tui);
+    const size_t visible_rows = rows > 2U ? rows - 2U : 1U;
     const size_t distance = visible_rows * editor_hex_current_bytes_per_row();
     if (down) {
         const size_t remaining = editor.len - editor.cursor;

@@ -625,82 +625,29 @@ static const char *ota_stage_name(solar_os_ota_progress_stage_t stage)
     }
 }
 
-static void ota_render_progress_line(solar_os_shell_io_t *term,
-                                     solar_os_ota_progress_stage_t stage,
-                                     uint8_t percent,
-                                     uint32_t read,
-                                     uint32_t total,
-                                     bool total_known,
-                                     const char *version)
+static void ota_render_progress_bar(solar_os_shell_io_t *term,
+                                    uint8_t percent,
+                                    uint32_t read,
+                                    uint32_t total,
+                                    bool total_known)
 {
     char read_text[16];
     char total_text[16];
-    char prefix[24];
-    char detail[48];
-    char version_text[SOLAR_OS_OTA_VERSION_MAX + 3U] = {0};
-    char bar[OTA_PROGRESS_BAR_WIDTH + 1U];
-    char line[SOLAR_OS_TERMINAL_MAX_COLS + 1U];
+    const uint8_t filled = (uint8_t)((percent * OTA_PROGRESS_BAR_WIDTH) / 100U);
+
+    solar_os_shell_io_put_char(term, '[');
+    for (uint8_t i = 0; i < OTA_PROGRESS_BAR_WIDTH; i++) {
+        solar_os_shell_io_put_char(term, i < filled ? '#' : '-');
+    }
+    solar_os_shell_io_printf(term, "] %3u%% ", (unsigned)percent);
 
     format_bytes(read, read_text, sizeof(read_text));
     if (total_known) {
         format_bytes(total, total_text, sizeof(total_text));
-        snprintf(detail,
-                 sizeof(detail),
-                 "] %3u%% %s/%s",
-                 (unsigned)percent,
-                 read_text,
-                 total_text);
+        solar_os_shell_io_printf(term, "%s/%s", read_text, total_text);
     } else {
-        snprintf(detail, sizeof(detail), "] %3u%% %s", (unsigned)percent, read_text);
+        solar_os_shell_io_printf(term, "%s", read_text);
     }
-    snprintf(prefix, sizeof(prefix), "ota: %-10s [", ota_stage_name(stage));
-    if (version != NULL && version[0] != '\0') {
-        snprintf(version_text, sizeof(version_text), " v%s", version);
-    }
-
-    size_t cols = solar_os_shell_io_cols(term);
-    if (cols == 0U) {
-        cols = 80U;
-    }
-    size_t line_budget = cols > 1U ? cols - 1U : cols;
-    if (line_budget > SOLAR_OS_TERMINAL_MAX_COLS) {
-        line_budget = SOLAR_OS_TERMINAL_MAX_COLS;
-    }
-
-    const size_t prefix_len = strlen(prefix);
-    const size_t detail_len = strlen(detail);
-    size_t version_len = strlen(version_text);
-    if (prefix_len + detail_len + version_len + 1U > line_budget) {
-        version_len = 0U;
-    }
-    const size_t fixed_width = prefix_len + detail_len + version_len;
-    size_t bar_width = line_budget > fixed_width ? line_budget - fixed_width : 0U;
-    if (bar_width > OTA_PROGRESS_BAR_WIDTH) {
-        bar_width = OTA_PROGRESS_BAR_WIDTH;
-    }
-    const size_t filled = (percent * bar_width) / 100U;
-    for (size_t i = 0U; i < bar_width; i++) {
-        bar[i] = i < filled ? '#' : '-';
-    }
-    bar[bar_width] = '\0';
-
-    const int written = snprintf(line,
-                                 sizeof(line),
-                                 "%s%s%s%.*s",
-                                 prefix,
-                                 bar,
-                                 detail,
-                                 (int)version_len,
-                                 version_text);
-    size_t line_len = written > 0 ? (size_t)written : 0U;
-    if (line_len >= sizeof(line)) {
-        line_len = sizeof(line) - 1U;
-    }
-    if (line_len > line_budget) {
-        line_len = line_budget;
-    }
-    line[line_len] = '\0';
-    solar_os_shell_io_write_len(term, line, line_len);
 }
 
 static void ota_shell_progress_cb(const solar_os_ota_progress_t *progress, void *user)
@@ -739,14 +686,15 @@ static void ota_shell_progress_cb(const solar_os_ota_progress_t *progress, void 
 
     solar_os_shell_io_set_cursor(state->term, state->row, 0);
     solar_os_shell_io_clear_line_from(state->term, state->row, 0);
-    ota_render_progress_line(
-        state->term,
-        progress->stage,
-        percent,
-        progress->bytes_read,
-        progress->image_size,
-        progress->image_size_known,
-        progress->stage == SOLAR_OS_OTA_PROGRESS_IMAGE ? progress->version : NULL);
+    solar_os_shell_io_printf(state->term, "ota: %-10s ", ota_stage_name(progress->stage));
+    ota_render_progress_bar(state->term,
+                            percent,
+                            progress->bytes_read,
+                            progress->image_size,
+                            progress->image_size_known);
+    if (progress->stage == SOLAR_OS_OTA_PROGRESS_IMAGE && progress->version[0] != '\0') {
+        solar_os_shell_io_printf(state->term, " v%s", progress->version);
+    }
     solar_os_shell_io_flush(state->term);
 
     state->last_stage = progress->stage;

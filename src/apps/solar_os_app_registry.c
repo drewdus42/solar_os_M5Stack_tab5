@@ -125,6 +125,7 @@
 #if SOLAR_OS_PACKAGE_APP_SKETCH
 #include "solar_os_sketch.h"
 #endif
+#include "solar_os_shell_keylight_tui.h"
 
 #define APP_ENTRY(app_name, app_summary, app_ptr, app_caps, app_usage, app_min, app_max) \
     {.name = app_name, .summary = app_summary, .app = app_ptr, .capabilities = app_caps, \
@@ -256,6 +257,7 @@ static const solar_os_app_registry_entry_t registered_apps[] = {
 #if SOLAR_OS_PACKAGE_APP_SKETCH
     APP_FILE_ENTRY("sketch", "pointer-driven paint application", &solar_os_sketch_app, SOLAR_OS_APP_CAP_GRAPHICS | SOLAR_OS_APP_CAP_DISPLAY, "sketch [file.png]", 1, 2, ".png"),
 #endif
+    APP_ENTRY("keylight", "keyboard backlight and RGB LED control", &solar_os_keylight_app, SOLAR_OS_APP_CAP_TEXT | SOLAR_OS_APP_CAP_DISPLAY | SOLAR_OS_APP_CAP_PORT, "keylight", 1, 1),
     {0},
 };
 

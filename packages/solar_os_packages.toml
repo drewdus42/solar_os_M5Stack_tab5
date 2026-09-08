@@ -531,6 +531,26 @@ label = "ADC battery monitor"
 category = "Expansion hardware"
 members = ["driver_battery_adc"]
 
+[groups.m5tab5_display]
+label = "M5Stack Tab5 MIPI DSI display"
+category = "Expansion hardware"
+members = ["driver_display_m5tab5"]
+
+[groups.m5tab5_touch]
+label = "M5Stack Tab5 touch controller"
+category = "Expansion hardware"
+members = ["driver_pointer_m5tab5"]
+
+[groups.ina226]
+label = "INA226 power monitor"
+category = "Expansion hardware"
+members = ["driver_battery_ina226"]
+
+[groups.rx8130]
+label = "RX8130 real-time clock"
+category = "Expansion hardware"
+members = ["driver_rtc_rx8130"]
+
 [groups.usb_hid]
 label = "USB HID"
 category = "Internal"
@@ -553,6 +573,12 @@ members = ["tlora_pager_core"]
 label = "TCA8418 keyboard"
 category = "Expansion hardware"
 members = ["tca8418"]
+
+[groups.m5tab5_keyboard]
+label = "M5Tab5 keyboard"
+category = "Expansion hardware"
+members = ["m5tab5_keyboard"]
+
 
 [groups.sx1262]
 label = "SX1262 LoRa radio"
@@ -616,15 +642,18 @@ sources = [
   "services/solar_os_tui_widgets.c",
 ]
 requires = [
+  "app_update",
   "esp_driver_gpio",
   "esp_driver_usb_serial_jtag",
   "esp_event",
+  "esp_netif",
   "esp_pm",
   "esp_rom",
   "esp_timer",
   "fatfs",
   "heap",
   "nvs_flash",
+  "spi_flash",
   "u8g2",
   "wear_levelling",
 ]
@@ -684,6 +713,7 @@ sources = [
   "shell/solar_os_shell_manual.c",
   "shell/solar_os_shell_line.c",
   "shell/solar_os_shell_setterm_tui.c",
+  "shell/solar_os_shell_keylight_tui.c",
   "shell/solar_os_shell_system.c",
   "shell/solar_os_shell_schedule.c",
   "shell/solar_os_vt100.c",
@@ -752,6 +782,7 @@ sources = [
 ]
 requires = ["esp_wifi", "nvs_flash"]
 capabilities = ["wifi"]
+targets = ["esp32", "esp32s3"]
 
 [packages.service_net]
 label = "network.base"
@@ -1062,7 +1093,6 @@ depends = ["service_resources"]
 sources = [
   "services/solar_os_expansion.c",
   "shell/solar_os_shell_expansion.c",
-  "shell/solar_os_shell_expansion_tui.c",
 ]
 
 [packages.service_radio]
@@ -1248,6 +1278,19 @@ sources = [
 requires = ["esp_driver_i2c", "esp_driver_gpio"]
 capabilities = ["i2c", "pwm"]
 
+[packages.m5tab5_keyboard]
+label = "expansion.m5tab5_keyboard"
+targets = ["esp32p4"]
+expansion_drivers = ["solar_os_m5tab5_keyboard_expansion_driver"]
+depends = ["service_expansion", "service_i2c"]
+sources = [
+  "services/solar_os_m5tab5_keyboard.c",
+  "services/solar_os_m5tab5_keyboard_driver.c",
+]
+requires = ["esp_driver_i2c", "esp_driver_gpio"]
+capabilities = ["i2c"]
+
+
 [packages.sx1262]
 label = "expansion.sx1262"
 targets = ["esp32s3"]
@@ -1338,7 +1381,7 @@ capabilities = ["expansion_spi"]
 
 [packages.expansion_sdmmc]
 label = "expansion.sdmmc"
-targets = ["esp32", "esp32s3"]
+targets = ["esp32", "esp32s3", "esp32p4"]
 expansion_drivers = ["solar_os_sdmmc_expansion_driver"]
 depends = ["service_expansion"]
 sources = [
@@ -1405,7 +1448,7 @@ capabilities = ["expansion_i2s"]
 
 [packages.driver_audio_es8311_codecs]
 label = "driver.audio-es8311"
-targets = ["esp32s3"]
+targets = ["esp32s3", "esp32p4"]
 expansion_drivers = [
   "solar_os_es8311_es7210_expansion_driver",
   "solar_os_es8311_duplex_expansion_driver",
@@ -1550,7 +1593,7 @@ capabilities = ["adc", "gpio"]
 label = "service.json"
 depends = ["service_json_scan"]
 sources = ["services/solar_os_json.c"]
-requires = ["json"]
+requires = ["espressif__cjson"]
 
 [packages.service_json_scan]
 label = "service.json-scan"
@@ -2038,6 +2081,7 @@ label = "job.espnow-link"
 depends = ["service_espnow", "service_inbox", "service_link"]
 sources = ["jobs/solar_os_espnow_link_job.c"]
 capabilities = ["wifi"]
+targets = ["esp32", "esp32s3"]
 
 [packages.job_meshcore]
 label = "job.meshcore"
@@ -2048,3 +2092,49 @@ sources = [
 ]
 capabilities = ["psram"]
 any_capabilities = ["expansion_spi", "expansion_gpio", "expansion_uart"]
+
+[packages.driver_display_m5tab5]
+label = "driver.display-m5tab5"
+targets = ["esp32p4"]
+expansion_drivers = ["solar_os_m5tab5_expansion_driver"]
+depends = ["service_expansion", "service_pwm"]
+sources = [
+  "board/solar_os_board_display_expansion.c",
+  "drivers/display_m5tab5.c",
+]
+requires = ["esp_driver_gpio", "esp_driver_i2c", "esp_lcd", "m5stack_tab5", "u8g2"]
+capabilities = ["gfx"]
+
+[packages.driver_pointer_m5tab5]
+label = "driver.pointer-m5tab5"
+targets = ["esp32p4"]
+expansion_drivers = ["solar_os_m5tab5_touch_expansion_driver"]
+depends = ["service_expansion", "service_i2c"]
+sources = [
+  "drivers/touch_m5tab5.c",
+]
+requires = ["esp_driver_gpio", "esp_driver_i2c", "m5stack_tab5"]
+capabilities = ["i2c"]
+
+[packages.driver_battery_ina226]
+label = "driver.battery-ina226"
+targets = ["esp32", "esp32s3", "esp32p4"]
+expansion_drivers = ["solar_os_ina226_expansion_driver"]
+depends = ["service_expansion", "service_i2c", "service_battery"]
+sources = [
+  "drivers/battery_ina226.c",
+]
+requires = ["esp_driver_i2c"]
+capabilities = ["i2c"]
+
+[packages.driver_rtc_rx8130]
+label = "driver.rtc-rx8130"
+targets = ["esp32", "esp32s3", "esp32p4"]
+expansion_drivers = ["solar_os_rx8130_expansion_driver"]
+depends = ["service_expansion", "service_i2c", "service_rtc"]
+sources = [
+  "drivers/rtc_rx8130.c",
+]
+requires = ["esp_driver_i2c"]
+capabilities = ["i2c"]
+

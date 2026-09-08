@@ -23,15 +23,10 @@ typedef struct {
     size_t width;
 } solar_os_tui_rect_t;
 
-typedef struct solar_os_tui {
+typedef struct {
     solar_os_shell_io_t *io;
     solar_os_shell_io_t fallback_io;
     solar_os_terminal_t *terminal;
-    bool screen_active;
-    bool fullscreen;
-    bool alt_prefix_pending;
-    bool saved_status_bar_visible;
-    bool status_bar_overridden;
     bool diff_enabled;
     bool diff_ready;
     uint16_t diff_cols;
@@ -52,7 +47,6 @@ typedef struct solar_os_tui {
 } solar_os_tui_t;
 
 esp_err_t solar_os_tui_begin(solar_os_tui_t *tui, solar_os_context_t *ctx);
-void solar_os_tui_attach_session(solar_os_tui_t *tui);
 void solar_os_tui_end(solar_os_tui_t *tui);
 esp_err_t solar_os_tui_enable_diff(solar_os_tui_t *tui, bool enabled);
 size_t solar_os_tui_rows(const solar_os_tui_t *tui);

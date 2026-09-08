@@ -94,10 +94,6 @@ static uint8_t wifi_ap_station_count;
 static uint8_t wifi_ap_max_connections;
 static uint8_t wifi_connectionless_channel;
 static esp_err_t wifi_nat_last_error;
-static bool wifi_async_scan_running;
-static bool wifi_async_scan_complete;
-static esp_err_t wifi_async_scan_result;
-static solar_os_wifi_state_t wifi_async_scan_previous_state;
 static esp_timer_handle_t wifi_repeater_reconnect_timer;
 static uint32_t wifi_repeater_reconnect_delay_ms = WIFI_REPEATER_RECONNECT_INITIAL_MS;
 static char wifi_connectionless_owner[SOLAR_OS_WIFI_CONNECTIONLESS_OWNER_MAX];
@@ -108,19 +104,6 @@ static esp_err_t wifi_update_ap_dns_from_sta(void);
 static void wifi_repeater_schedule_reconnect(void);
 static void wifi_lock(void);
 static void wifi_unlock(void);
-
-static void wifi_restore_state_after_scan_locked(void)
-{
-    if (!wifi_started) {
-        wifi_state = SOLAR_OS_WIFI_STATE_OFF;
-    } else if (wifi_connected && wifi_has_ip) {
-        wifi_state = SOLAR_OS_WIFI_STATE_CONNECTED;
-    } else if (wifi_connected) {
-        wifi_state = SOLAR_OS_WIFI_STATE_CONNECTING;
-    } else {
-        wifi_state = SOLAR_OS_WIFI_STATE_IDLE;
-    }
-}
 
 static esp_err_t wifi_wait_for_ap_running(void)
 {
@@ -714,13 +697,67 @@ static esp_err_t wifi_select_saved_profile(wifi_profile_t *selected)
         return ESP_ERR_INVALID_ARG;
     }
 
+    wifi_profile_t profiles[SOLAR_OS_WIFI_PROFILE_MAX];
+    size_t count = 0;
+
     wifi_lock();
-    if (wifi_profile_count == 0) {
-        wifi_unlock();
+    count = wifi_profile_count;
+    memcpy(profiles, wifi_profiles, sizeof(profiles));
+    wifi_unlock();
+
+    if (count == 0) {
         return ESP_ERR_NOT_FOUND;
     }
-    *selected = wifi_profiles[0];
+    if (count == 1) {
+        *selected = profiles[0];
+        return ESP_OK;
+    }
+
+    wifi_lock();
+    const solar_os_wifi_state_t previous_state = wifi_state;
+    wifi_state = SOLAR_OS_WIFI_STATE_SCANNING;
     wifi_unlock();
+
+    esp_err_t ret = esp_wifi_scan_start(NULL, true);
+    if (ret != ESP_OK) {
+        wifi_lock();
+        wifi_state = previous_state;
+        wifi_unlock();
+        *selected = profiles[0];
+        return ESP_OK;
+    }
+
+    uint16_t record_count = SOLAR_OS_WIFI_SCAN_MAX_RESULTS;
+    wifi_ap_record_t records[SOLAR_OS_WIFI_SCAN_MAX_RESULTS] = {0};
+    ret = esp_wifi_scan_get_ap_records(&record_count, records);
+
+    wifi_lock();
+    wifi_state = previous_state;
+    wifi_unlock();
+
+    if (ret != ESP_OK) {
+        *selected = profiles[0];
+        return ESP_OK;
+    }
+
+    int best_index = -1;
+    int8_t best_rssi = INT8_MIN;
+    for (uint16_t record_index = 0; record_index < record_count; record_index++) {
+        char ssid[SOLAR_OS_WIFI_SSID_MAX + 1] = {0};
+        wifi_copy_ssid(ssid, sizeof(ssid), records[record_index].ssid, sizeof(records[record_index].ssid));
+        if (ssid[0] == '\0') {
+            continue;
+        }
+        for (size_t profile_index = 0; profile_index < count; profile_index++) {
+            if (strcmp(profiles[profile_index].ssid, ssid) == 0 &&
+                (best_index < 0 || records[record_index].rssi > best_rssi)) {
+                best_index = (int)profile_index;
+                best_rssi = records[record_index].rssi;
+            }
+        }
+    }
+
+    *selected = profiles[best_index >= 0 ? (size_t)best_index : 0];
     return ESP_OK;
 }
 
@@ -1226,18 +1263,6 @@ static void wifi_event_handler(void *arg,
             }
             wifi_unlock();
             break;
-        case WIFI_EVENT_SCAN_DONE: {
-            const wifi_event_sta_scan_done_t *event =
-                (const wifi_event_sta_scan_done_t *)event_data;
-            wifi_lock();
-            if (wifi_async_scan_running) {
-                wifi_async_scan_result = event != NULL && event->status == 0U ?
-                    ESP_OK : ESP_FAIL;
-                wifi_async_scan_complete = true;
-            }
-            wifi_unlock();
-            break;
-        }
         case WIFI_EVENT_STA_CONNECTED: {
             const wifi_event_sta_connected_t *event = (const wifi_event_sta_connected_t *)event_data;
             wifi_lock();
@@ -2089,85 +2114,6 @@ esp_err_t solar_os_wifi_ap_stop(void)
     return repeater_ret != ESP_OK ? repeater_ret : mode_ret;
 }
 
-esp_err_t solar_os_wifi_ap_saved_get(solar_os_wifi_ap_config_t *config)
-{
-    if (config == NULL) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    esp_err_t ret = solar_os_wifi_init();
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    wifi_lock();
-    if (!wifi_has_saved_ap_config) {
-        wifi_unlock();
-        memset(config, 0, sizeof(*config));
-        return ESP_ERR_NOT_FOUND;
-    }
-    strlcpy(config->ssid, wifi_saved_ap_ssid, sizeof(config->ssid));
-    strlcpy(config->password, wifi_saved_ap_password, sizeof(config->password));
-    strlcpy(config->auth, wifi_saved_ap_auth, sizeof(config->auth));
-    wifi_unlock();
-    return ESP_OK;
-}
-
-esp_err_t solar_os_wifi_ap_save(const char *ssid,
-                                const char *password,
-                                const char *auth)
-{
-    esp_err_t ret = solar_os_wifi_init();
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    wifi_auth_mode_t authmode = WIFI_AUTH_OPEN;
-    ret = wifi_validate_ap_settings(ssid, password, auth, &authmode);
-    if (ret != ESP_OK) {
-        return ret;
-    }
-    return wifi_save_ap_config(ssid, password, authmode);
-}
-
-esp_err_t solar_os_wifi_ap_forget(void)
-{
-    esp_err_t ret = solar_os_wifi_init();
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    nvs_handle_t nvs;
-    ret = nvs_open(WIFI_AP_NVS_NAMESPACE, NVS_READWRITE, &nvs);
-    if (ret == ESP_ERR_NVS_NOT_FOUND) {
-        ret = ESP_OK;
-    } else if (ret == ESP_OK) {
-        const char *keys[] = {
-            WIFI_AP_NVS_SSID_KEY,
-            WIFI_AP_NVS_PASSWORD_KEY,
-            WIFI_AP_NVS_AUTH_KEY,
-        };
-        for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
-            const esp_err_t erase_ret = nvs_erase_key(nvs, keys[i]);
-            if (erase_ret != ESP_OK && erase_ret != ESP_ERR_NVS_NOT_FOUND) {
-                ret = erase_ret;
-                break;
-            }
-        }
-        if (ret == ESP_OK) {
-            ret = nvs_commit(nvs);
-        }
-        nvs_close(nvs);
-    }
-
-    if (ret == ESP_OK) {
-        wifi_lock();
-        wifi_clear_saved_ap_config_locked();
-        wifi_unlock();
-    }
-    return ret;
-}
-
 esp_err_t solar_os_wifi_nat_set(bool enabled)
 {
     esp_err_t ret = solar_os_wifi_init();
@@ -2370,126 +2316,18 @@ esp_err_t solar_os_wifi_scan(solar_os_wifi_ap_t *aps, size_t max_aps, size_t *fo
     }
 
     wifi_lock();
-    wifi_restore_state_after_scan_locked();
+    if (!wifi_started) {
+        wifi_state = SOLAR_OS_WIFI_STATE_OFF;
+    } else if (wifi_connected && wifi_has_ip) {
+        wifi_state = SOLAR_OS_WIFI_STATE_CONNECTED;
+    } else if (wifi_connected) {
+        wifi_state = SOLAR_OS_WIFI_STATE_CONNECTING;
+    } else {
+        wifi_state = SOLAR_OS_WIFI_STATE_IDLE;
+    }
     wifi_unlock();
 
     return ESP_OK;
-}
-
-esp_err_t solar_os_wifi_scan_start_async(void)
-{
-    wifi_lock();
-    const bool connectionless_active = wifi_connectionless_active;
-    const bool scan_running = wifi_async_scan_running;
-    wifi_unlock();
-    if (connectionless_active || scan_running) {
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    esp_err_t ret = solar_os_wifi_start();
-    if (ret != ESP_OK) {
-        return ret;
-    }
-
-    wifi_lock();
-    if (wifi_async_scan_running) {
-        wifi_unlock();
-        return ESP_ERR_INVALID_STATE;
-    }
-    wifi_async_scan_previous_state = wifi_state;
-    wifi_async_scan_result = ESP_ERR_NOT_FINISHED;
-    wifi_async_scan_complete = false;
-    wifi_async_scan_running = true;
-    wifi_state = SOLAR_OS_WIFI_STATE_SCANNING;
-    wifi_unlock();
-
-    ret = esp_wifi_scan_start(NULL, false);
-    if (ret != ESP_OK) {
-        wifi_lock();
-        wifi_async_scan_running = false;
-        wifi_async_scan_complete = false;
-        wifi_state = wifi_async_scan_previous_state;
-        wifi_unlock();
-    }
-    return ret;
-}
-
-esp_err_t solar_os_wifi_scan_cancel_async(void)
-{
-    wifi_lock();
-    if (!wifi_async_scan_running) {
-        wifi_unlock();
-        return ESP_OK;
-    }
-    wifi_async_scan_running = false;
-    wifi_async_scan_complete = false;
-    wifi_restore_state_after_scan_locked();
-    wifi_unlock();
-
-    const esp_err_t ret = esp_wifi_scan_stop();
-    (void)esp_wifi_clear_ap_list();
-    return ret == ESP_ERR_WIFI_STATE ? ESP_OK : ret;
-}
-
-esp_err_t solar_os_wifi_scan_results(solar_os_wifi_ap_t *aps,
-                                     size_t max_aps,
-                                     size_t *found)
-{
-    if (found != NULL) {
-        *found = 0U;
-    }
-    if (max_aps > 0U && aps == NULL) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    wifi_lock();
-    if (!wifi_async_scan_running) {
-        wifi_unlock();
-        return ESP_ERR_INVALID_STATE;
-    }
-    if (!wifi_async_scan_complete) {
-        wifi_unlock();
-        return ESP_ERR_NOT_FINISHED;
-    }
-    const esp_err_t scan_result = wifi_async_scan_result;
-    wifi_unlock();
-
-    esp_err_t ret = scan_result;
-    uint16_t record_count = max_aps > SOLAR_OS_WIFI_SCAN_MAX_RESULTS ?
-        SOLAR_OS_WIFI_SCAN_MAX_RESULTS :
-        (uint16_t)max_aps;
-    wifi_ap_record_t records[SOLAR_OS_WIFI_SCAN_MAX_RESULTS] = {0};
-    if (ret == ESP_OK) {
-        ret = esp_wifi_scan_get_ap_records(&record_count, records);
-    } else {
-        (void)esp_wifi_clear_ap_list();
-    }
-
-    if (ret == ESP_OK) {
-        for (uint16_t i = 0; i < record_count; i++) {
-            wifi_copy_ssid(aps[i].ssid,
-                           sizeof(aps[i].ssid),
-                           records[i].ssid,
-                           sizeof(records[i].ssid));
-            aps[i].hidden = aps[i].ssid[0] == '\0';
-            if (aps[i].hidden) {
-                strlcpy(aps[i].ssid, "<hidden>", sizeof(aps[i].ssid));
-            }
-            strlcpy(aps[i].auth, wifi_auth_name(records[i].authmode), sizeof(aps[i].auth));
-            aps[i].rssi = records[i].rssi;
-            aps[i].channel = records[i].primary;
-        }
-        if (found != NULL) {
-            *found = record_count;
-        }
-    }
-
-    wifi_lock();
-    wifi_async_scan_running = false;
-    wifi_async_scan_complete = false;
-    wifi_restore_state_after_scan_locked();
-    wifi_unlock();
-    return ret;
 }
 
 esp_err_t solar_os_wifi_connectionless_acquire(const char *owner,

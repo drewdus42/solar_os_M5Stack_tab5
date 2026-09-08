@@ -28,6 +28,7 @@
 
 void clean(void *dest, size_t size);
 
+#ifdef __cplusplus
 template <typename T>
 inline void clean(T &var)
 {
@@ -35,6 +36,7 @@ inline void clean(T &var)
 }
 
 bool secure_compare(const void *data1, const void *data2, size_t len);
+#endif
 
 #if defined(ESP8266)
 extern "C" void system_soft_wdt_feed(void);

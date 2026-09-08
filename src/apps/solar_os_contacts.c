@@ -134,9 +134,7 @@ static void contacts_app_refresh(void)
 static size_t contacts_app_visible_rows(void)
 {
     const size_t rows = solar_os_tui_rows(&contacts_app.tui);
-    const size_t footer_rows = solar_os_tui_screen_fullscreen(&contacts_app.tui) ?
-        (contacts_app.searching ? 1U : 0U) : 1U;
-    return rows > 1U + footer_rows ? rows - 1U - footer_rows : 0U;
+    return rows > 2U ? rows - 2U : 0U;
 }
 
 static void contacts_app_ensure_visible(void)
@@ -216,14 +214,7 @@ static void contacts_app_render_list(void)
                     "Search: /%s  Enter accept  Esc clear" :
                     "Enter details  / search  q quit",
                  contacts_app.search);
-        if (solar_os_tui_screen_fullscreen(&contacts_app.tui)) {
-            if (contacts_app.searching) {
-                solar_os_tui_write_cell(&contacts_app.tui, rows - 1U, 0U, cols,
-                                        line, SOLAR_OS_TUI_ATTR_INVERSE);
-            }
-        } else {
-            solar_os_tui_draw_help(&contacts_app.tui, line);
-        }
+        solar_os_tui_draw_help(&contacts_app.tui, line);
     }
 }
 

@@ -16,7 +16,7 @@ BOARD_ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 DEVICE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 DEFINE_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 HEADER_INCLUDE_RE = re.compile(r"^[A-Za-z0-9_./-]+\.h$")
-TARGET_GPIO_MAX = {"esp32": 39, "esp32s3": 48}
+TARGET_GPIO_MAX = {"esp32": 39, "esp32s3": 48, "esp32p4": 55}
 POLICIES = {"free", "releasable", "fixed"}
 BUS_PROTOCOLS = {"i2c", "spi", "uart", "onewire", "ps2"}
 BINDING_KINDS = {
@@ -125,7 +125,7 @@ def load_driver_catalog(path: Path) -> dict[str, DriverDef]:
             raise ManifestError(f"{prefix}.package is required")
         targets = tuple(_string_list(raw.get("targets"), f"{prefix}.targets"))
         if not targets or any(target not in TARGET_GPIO_MAX for target in targets):
-            raise ManifestError(f"{prefix}.targets must select esp32 and/or esp32s3")
+            raise ManifestError(f"{prefix}.targets must select supported targets ({', '.join(sorted(TARGET_GPIO_MAX))})")
         raw_bindings = raw.get("bindings", [])
         if not isinstance(raw_bindings, list):
             raise ManifestError(f"{prefix}.bindings must be an array of tables")
@@ -335,7 +335,7 @@ def validate_board(board: dict[str, Any], drivers: dict[str, DriverDef]) -> None
             raise ManifestError(f"board.{key} is required")
     mcu = target.get("mcu")
     if mcu not in TARGET_GPIO_MAX:
-        raise ManifestError("target.mcu must be esp32 or esp32s3")
+        raise ManifestError(f"target.mcu must be one of: {', '.join(sorted(TARGET_GPIO_MAX))}")
     if not isinstance(target.get("platformio_board"), str) or not target["platformio_board"]:
         raise ManifestError("target.platformio_board is required")
     capabilities = set(_string_list(build.get("capabilities"), "build.capabilities"))

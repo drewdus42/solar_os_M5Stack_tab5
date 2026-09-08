@@ -68,6 +68,7 @@ static bool mqtt_parse_retain(const char *text, bool *retain)
 
 static bool mqtt_read_stop_key(void)
 {
+#if SOLAR_OS_PACKAGE_SERVICE_BLE
     char chars[8];
     size_t count;
 
@@ -79,6 +80,7 @@ static bool mqtt_read_stop_key(void)
             }
         }
     }
+#endif
 
     return false;
 }

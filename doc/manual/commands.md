@@ -285,6 +285,7 @@ job for periodic polling.
 | `setterm` | `setterm timezone [UTC\|UTC+/-offset\|Europe/Berlin\|POSIX-TZ]` | Show or set the timezone used for local time. |
 | `setterm` | `setterm startup [flash\|sd]` | Show or select the volume containing `.shell/startup` for the next boot. |
 | `setterm` | `setterm otaurl [url]` | Show or set the OTA metadata URL. |
+| `kbd` | `kbd`; `kbd status`; `kbd brightness <0..100>`; `kbd color <#hex\|r g b\|off\|auto>`; `kbd off` | Adjust keyboard backlight brightness and RGB LED colors or launch interactive settings. |
 
 Input completion lists every current source after `input test`, only absolute
 pointer sources after `input calibrate`, `status` after an input class, and
@@ -834,8 +835,7 @@ available for the compiled board.
 | `audio` | `audio loopback [ms] [volume]` | Run microphone-to-speaker loopback. |
 | `audio` | `audio off` | Stop audio output. |
 | `led` | `led [status|on|off|toggle]` | Inspect or control the built-in status LED when available. |
-| `expansion` | `expansion` | Open the expansion device manager. Browse attached devices and driver categories, inspect details, attach supported drivers, and detach runtime devices. Bus lifecycle remains in the `io` app. |
-| `expansion` | `expansion status` | Show expansion capabilities, named buses and leases, connector resources, active devices, and resource claims. |
+| `expansion` | `expansion [status]` | Show expansion capabilities, named buses and leases, connector resources, active devices, and resource claims. |
 | `expansion` | `expansion layout [connector]` | Draw the board's physical connector map with live free, releasable, claimed, fixed, power, ground, and NC markers. |
 | `expansion` | `expansion scan` | List expansion resources and probe-capable drivers. |
 | `expansion` | `expansion drivers` | List compiled expansion drivers. |

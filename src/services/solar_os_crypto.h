@@ -5,9 +5,12 @@
 #include <stdint.h>
 
 #include "esp_err.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/sha256.h"
+#ifndef MBEDTLS_ALLOW_PRIVATE_ACCESS
+#define MBEDTLS_ALLOW_PRIVATE_ACCESS
+#endif
+#include "mbedtls/private/ctr_drbg.h"
+#include "mbedtls/private/entropy.h"
+#include "mbedtls/private/sha256.h"
 
 #ifdef __cplusplus
 extern "C" {

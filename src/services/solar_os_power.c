@@ -2,7 +2,6 @@
 
 #include <string.h>
 
-#include "esp_bt.h"
 #include "esp_timer.h"
 #include "esp_pm.h"
 #include "nvs.h"
@@ -103,12 +102,14 @@ static void profile_pm_config(solar_os_power_profile_t profile,
         break;
     }
 
+#if defined(SOLAR_OS_BOARD_CPU_FLOOR_MHZ) && (SOLAR_OS_BOARD_CPU_FLOOR_MHZ > 0)
     if (min_value < SOLAR_OS_BOARD_CPU_FLOOR_MHZ) {
         min_value = SOLAR_OS_BOARD_CPU_FLOOR_MHZ;
     }
     if (max_value < SOLAR_OS_BOARD_CPU_FLOOR_MHZ) {
         max_value = SOLAR_OS_BOARD_CPU_FLOOR_MHZ;
     }
+#endif
 
     if (min_mhz != NULL) {
         *min_mhz = min_value;

@@ -149,7 +149,7 @@ bool solar_os_connector_pin_find(size_t row,
                                  size_t *index)
 {
     for (size_t i = 0; i < solar_os_connector_pin_count(); i++) {
-        solar_os_connector_pin_info_t candidate;
+        solar_os_connector_pin_info_t candidate = {0};
         if (solar_os_connector_pin_get_info(i, &candidate) &&
             candidate.row == row && candidate.column == column) {
             if (info != NULL) {
@@ -170,7 +170,7 @@ bool solar_os_connector_exists(const char *name)
         return false;
     }
     for (size_t i = 0; i < solar_os_connector_pin_count(); i++) {
-        solar_os_connector_pin_info_t pin;
+        solar_os_connector_pin_info_t pin = {0};
         if (solar_os_connector_pin_get_info(i, &pin) &&
             pin.connector != NULL && strcmp(pin.connector, name) == 0) {
             return true;

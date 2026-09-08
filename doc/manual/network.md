@@ -30,11 +30,7 @@ add Espressif Long Range support to the station interface; stopping the job
 restores the Wi-Fi protocol selection that was active before it started.
 
 From the shell, `wifi` opens the display TUI and `wifi status` works on every
-shell. In the TUI, `scan` opens a selectable network list; select an SSID and
-enter its password to connect. `saved stations` lists remembered station
-profiles and can forget them. `saved access points` adds, edits, or removes the
-stored SoftAP configuration, including its password. A script can scan before
-connecting:
+shell. A script can scan before connecting:
 
 ```python
 import solaros

@@ -723,11 +723,10 @@ static void files_draw_transaction(size_t rows, size_t cols)
     if (!files.transaction.active || rows < 4U || cols < 12U) {
         return;
     }
-    const size_t height = solar_os_tui_screen_content_rows(&files.tui, 1U, 2U);
     const solar_os_tui_rect_t bounds = {
         .row = rows > 2U ? 1U : 0U,
         .col = 0U,
-        .height = rows > 2U ? height : rows,
+        .height = rows > 2U ? rows - 2U : rows,
         .width = cols,
     };
     solar_os_tui_rect_t popup = {0};
@@ -860,13 +859,7 @@ static void files_draw_pane(files_pane_t *pane,
 
 static void files_draw_bottom(size_t rows, size_t cols)
 {
-    const bool input_active = files.input_mode != FILES_INPUT_NONE;
-    if (solar_os_tui_screen_fullscreen(&files.tui) && !input_active) {
-        solar_os_tui_draw_footer(&files.tui, files.message, NULL);
-        return;
-    }
-    const size_t bottom_rows = solar_os_tui_screen_fullscreen(&files.tui) ? 1U : 2U;
-    const size_t msg_row = rows >= bottom_rows ? rows - bottom_rows : 0U;
+    const size_t msg_row = rows >= 2 ? rows - 2U : 0;
     solar_os_tui_fill(&files.tui, msg_row, 0, 1, cols, ' ', SOLAR_OS_TUI_ATTR_NORMAL);
     if (files.input_mode == FILES_INPUT_MKDIR || files.input_mode == FILES_INPUT_ZIP) {
         const char *label = files.input_mode == FILES_INPUT_ZIP ? "zip: " : "mkdir: ";
@@ -928,10 +921,7 @@ static void files_render(solar_os_context_t *ctx)
         solar_os_tui_refresh(&files.tui);
         return;
     }
-    const size_t footer_rows = solar_os_tui_screen_fullscreen(&files.tui) ?
-        (files.input_mode != FILES_INPUT_NONE ? 1U : 0U) : 2U;
-    const size_t pane_height = rows > 1U + footer_rows ?
-        rows - 1U - footer_rows : 1U;
+    const size_t pane_height = rows - 3U;
     const size_t left_width = cols / 2U;
     const size_t right_width = cols - left_width;
     files_draw_pane(&files.panes[0], 0, pane_row, 0, pane_height, left_width);
@@ -980,8 +970,7 @@ static void files_move_cursor(files_pane_t *pane, int delta)
 static void files_page(files_pane_t *pane, bool down)
 {
     const size_t rows = solar_os_tui_rows(&files.tui);
-    const size_t reserved = files.launcher_mode ? 3U :
-        (solar_os_tui_screen_fullscreen(&files.tui) ? 4U : 6U);
+    const size_t reserved = files.launcher_mode ? 3U : 6U;
     const size_t page = rows > reserved ? rows - reserved : 1U;
     files_move_cursor(pane, down ? (int)page : -(int)page);
 }

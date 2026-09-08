@@ -15,4 +15,6 @@ idf_component_register(
 target_compile_options(${COMPONENT_LIB} PRIVATE
     -Wno-unused-but-set-variable
     -Wno-unused-variable
+    -Wno-error=unterminated-string-initialization
+    -Wno-unterminated-string-initialization
 )

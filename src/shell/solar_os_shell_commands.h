@@ -110,6 +110,7 @@ void solar_os_shell_cmd_disk(solar_os_context_t *ctx, int argc, char **argv);
 void solar_os_shell_cmd_espnow(solar_os_context_t *ctx, int argc, char **argv);
 #endif
 void solar_os_shell_cmd_setterm(solar_os_context_t *ctx, int argc, char **argv);
+void solar_os_shell_cmd_keylight(solar_os_context_t *ctx, int argc, char **argv);
 void solar_os_shell_cmd_sleep(solar_os_context_t *ctx, int argc, char **argv);
 void solar_os_shell_cmd_suspend(solar_os_context_t *ctx, int argc, char **argv);
 #if SOLAR_OS_PACKAGE_SERVICE_RESOURCES && SOLAR_OS_PACKAGE_SERVICE_SPI

@@ -7,6 +7,7 @@
 #include "mbedtls/base64.h"
 #include "mbedtls/md.h"
 #include "mbedtls/pk.h"
+#include "psa/crypto.h"
 
 static int crypto_hex_value(char ch)
 {
@@ -226,7 +227,8 @@ esp_err_t solar_os_crypto_ecdsa_p256_sha256_verify_pem(const char *public_key_pe
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!mbedtls_pk_can_do(&key, MBEDTLS_PK_ECDSA) || mbedtls_pk_get_bitlen(&key) != 256) {
+    if (!mbedtls_pk_can_do_psa(&key, MBEDTLS_PK_ALG_ECDSA(PSA_ALG_SHA_256), PSA_KEY_USAGE_VERIFY_HASH) ||
+        mbedtls_pk_get_bitlen(&key) != 256) {
         mbedtls_pk_free(&key);
         return ESP_ERR_NOT_SUPPORTED;
     }

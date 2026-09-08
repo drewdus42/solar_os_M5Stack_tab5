@@ -147,16 +147,11 @@ static void setterm_tui_current_value(setterm_tui_item_t item, char *buffer, siz
         snprintf(buffer, buffer_len, "#%06" PRIx32, color);
         break;
     }
-    case SETTERM_TUI_STATUSBAR: {
-        const bool status_bar_visible =
-            solar_os_tui_screen_fullscreen(&setterm_tui.tui) ?
-                setterm_tui.tui.saved_status_bar_visible :
-                solar_os_terminal_status_bar_visible(term);
+    case SETTERM_TUI_STATUSBAR:
         strlcpy(buffer,
-                status_bar_visible ? "show" : "hide",
+                solar_os_terminal_status_bar_visible(term) ? "show" : "hide",
                 buffer_len);
         break;
-    }
     case SETTERM_TUI_BRIGHTNESS: {
         uint8_t percent = 0;
         const esp_err_t err = solar_os_display_get_brightness(&percent);
@@ -261,8 +256,7 @@ static void setterm_tui_render(void)
 
     const size_t value_col = split + 1;
     const size_t value_width = setterm_tui_visible_width(cols, value_col);
-    const size_t visible_items = solar_os_tui_screen_content_rows(
-        &setterm_tui.tui, 1U, 1U);
+    const size_t visible_items = rows > 2 ? rows - 2 : 0;
     if (setterm_tui.selected < setterm_tui.first_visible) {
         setterm_tui.first_visible = setterm_tui.selected;
     } else if (visible_items > 0 &&
@@ -305,9 +299,10 @@ static void setterm_tui_render(void)
     }
 
     if (rows > 1) {
-        solar_os_tui_draw_footer(&setterm_tui.tui,
-                                 setterm_tui.status,
-                                 "arrows select/change  enter edit  esc exits");
+        solar_os_tui_draw_help(
+            &setterm_tui.tui,
+            setterm_tui.status[0] != '\0' ? setterm_tui.status :
+                "arrows select/change  enter edit  esc exits");
     }
 
     if (setterm_tui.editing && value_width > 0 && visible_items > 0) {
@@ -518,22 +513,14 @@ static bool setterm_tui_apply_selected(void)
                     solar_os_display_set_foreground_color(rgb888) :
                     solar_os_display_set_background_color(rgb888)) == ESP_OK;
     }
-    case SETTERM_TUI_STATUSBAR: {
-        bool visible = false;
+    case SETTERM_TUI_STATUSBAR:
         if (strcmp(setterm_tui.edit_text, "show") == 0) {
-            visible = true;
-        } else if (strcmp(setterm_tui.edit_text, "hide") != 0) {
-            return false;
+            return solar_os_sessions_set_terminal_status_bar_visible(term, true) == ESP_OK;
         }
-        if (solar_os_sessions_set_terminal_status_bar_visible(term, visible) != ESP_OK) {
-            return false;
+        if (strcmp(setterm_tui.edit_text, "hide") == 0) {
+            return solar_os_sessions_set_terminal_status_bar_visible(term, false) == ESP_OK;
         }
-        if (solar_os_tui_screen_fullscreen(&setterm_tui.tui)) {
-            setterm_tui.tui.saved_status_bar_visible = visible;
-            return solar_os_terminal_set_status_bar_visible_transient(term, false) == ESP_OK;
-        }
-        return true;
-    }
+        return false;
     case SETTERM_TUI_BRIGHTNESS: {
         size_t percent = 0;
         return parse_size_arg(setterm_tui.edit_text, 0, 100, &percent) &&
@@ -694,11 +681,6 @@ static bool setterm_tui_event(solar_os_context_t *ctx, const solar_os_event_t *e
 
     if (event == NULL) {
         return false;
-    }
-
-    if (event->type == SOLAR_OS_EVENT_RESUME) {
-        setterm_tui_render();
-        return true;
     }
 
     if (event->type == SOLAR_OS_EVENT_TICK) {

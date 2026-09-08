@@ -51,7 +51,7 @@ void u8g2_ClearBuffer(u8g2_t *u8g2)
 static void u8g2_send_tile_row(u8g2_t *u8g2, uint8_t src_tile_row, uint8_t dest_tile_row)
 {
   uint8_t *ptr;
-  uint16_t offset;
+  size_t offset;
   uint8_t w;
   
   w = u8g2_GetU8x8(u8g2)->display_info->tile_width;
@@ -152,7 +152,7 @@ uint8_t u8g2_NextPage(u8g2_t *u8g2)
 */
 void u8g2_UpdateDisplayArea(u8g2_t *u8g2, uint8_t  tx, uint8_t ty, uint8_t tw, uint8_t th)
 {
-  uint16_t page_size;
+  size_t page_size;
   uint8_t *ptr;
   
   /* check, whether we are in full buffer mode */
@@ -162,8 +162,8 @@ void u8g2_UpdateDisplayArea(u8g2_t *u8g2, uint8_t  tx, uint8_t ty, uint8_t tw, u
   page_size = u8g2->pixel_buf_width;  /* 8*u8g2->u8g2_GetU8x8(u8g2)->display_info->tile_width */
     
   ptr = u8g2_GetBufferPtr(u8g2);
-  ptr += tx*8;
-  ptr += page_size*ty;
+  ptr += (size_t)tx*8;
+  ptr += page_size*(size_t)ty;
   
   while( th > 0 )
   {

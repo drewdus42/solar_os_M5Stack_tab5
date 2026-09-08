@@ -15,8 +15,11 @@
 #if SOLAR_OS_BOARD_STORAGE_SDSPI
 #include "spi_bus.h"
 #endif
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC
+#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC
 #include "driver/sdmmc_host.h"
+#if SOC_SDMMC_IO_POWER_EXTERNAL
+#include "sd_pwr_ctrl_by_on_chip_ldo.h"
+#endif
 #endif
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -24,6 +27,7 @@
 #include "ff.h"
 #include "flash_storage.h"
 #include "sdmmc_cmd.h"
+#include "sd_protocol_defs.h"
 #include "sdkconfig.h"
 #include "solar_os_board.h"
 
@@ -75,11 +79,42 @@ static bool sdspi_runtime_configured;
 static int sdspi_runtime_host = -1;
 static int sdspi_runtime_cs = -1;
 #endif
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC
+#if CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE && (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0))
+static esp_err_t sdmmc_host_init_dummy(void)
+{
+    return ESP_OK;
+}
+
+static esp_err_t sdmmc_host_deinit_dummy(void)
+{
+    return ESP_OK;
+}
+#endif
+
+#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC
+#if SOLAR_OS_BOARD_STORAGE_SDMMC
+static int sdmmc_pins[6] = {
+#if defined(SOLAR_OS_BOARD_PIN_SDMMC_CLK) && defined(SOLAR_OS_BOARD_PIN_SDMMC_CMD)
+    SOLAR_OS_BOARD_PIN_SDMMC_CLK,
+    SOLAR_OS_BOARD_PIN_SDMMC_CMD,
+    SOLAR_OS_BOARD_PIN_SDMMC_D0,
+    SOLAR_OS_BOARD_PIN_SDMMC_D1,
+    SOLAR_OS_BOARD_PIN_SDMMC_D2,
+    SOLAR_OS_BOARD_PIN_SDMMC_D3,
+#elif defined(CONFIG_IDF_TARGET_ESP32P4)
+    43, 44, 39, 40, 41, 42
+#else
+    14, 15, 2, 4, 12, 13
+#endif
+};
+#else
 static int sdmmc_pins[6] = {-1, -1, -1, -1, -1, -1};
+#endif
 #endif
 #if SOLAR_OS_BOARD_STORAGE_SDSPI
 static sd_card_transport_t transport = SD_CARD_TRANSPORT_SDSPI_BOARD;
+#elif SOLAR_OS_BOARD_STORAGE_SDMMC
+static sd_card_transport_t transport = SD_CARD_TRANSPORT_SDMMC;
 #else
 static sd_card_transport_t transport = SD_CARD_TRANSPORT_NONE;
 #endif
@@ -257,7 +292,7 @@ static void sd_card_deinit_host(void)
         return;
     }
 #endif
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC
+#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC
     if (transport == SD_CARD_TRANSPORT_SDMMC) {
         if (host.flags & SDMMC_HOST_FLAG_DEINIT_ARG) {
             host.deinit_p(host.slot);
@@ -268,12 +303,12 @@ static void sd_card_deinit_host(void)
 #endif
 }
 
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC
+#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC
 static void sd_card_make_slot_config(sdmmc_slot_config_t *slot_config)
 {
     *slot_config = (sdmmc_slot_config_t)SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config->width = sdmmc_pins[3] >= 0 ? 4 : 1;
-#ifdef CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
+#if defined(CONFIG_SOC_SDMMC_USE_GPIO_MATRIX) || defined(CONFIG_IDF_TARGET_ESP32P4)
     slot_config->clk = sdmmc_pins[0];
     slot_config->cmd = sdmmc_pins[1];
     slot_config->d0 = sdmmc_pins[2];
@@ -366,7 +401,7 @@ esp_err_t sd_card_configure_sdmmc(int clk_pin,
                                   int d2_pin,
                                   int d3_pin)
 {
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC && !SOLAR_OS_BOARD_STORAGE_SDSPI
+#if (SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC) && !SOLAR_OS_BOARD_STORAGE_SDSPI
     const bool four_bit = d1_pin >= 0 || d2_pin >= 0 || d3_pin >= 0;
     if (clk_pin < 0 || cmd_pin < 0 || d0_pin < 0 ||
         (four_bit && (d1_pin < 0 || d2_pin < 0 || d3_pin < 0))) {
@@ -377,10 +412,15 @@ esp_err_t sd_card_configure_sdmmc(int clk_pin,
         (four_bit && (d1_pin != 4 || d2_pin != 12 || d3_pin != 13))) {
         return ESP_ERR_NOT_SUPPORTED;
     }
+#elif CONFIG_IDF_TARGET_ESP32P4
+    if (clk_pin != 43 || cmd_pin != 44 || d0_pin != 39 ||
+        (four_bit && (d1_pin != 40 || d2_pin != 41 || d3_pin != 42))) {
+        return ESP_ERR_NOT_SUPPORTED;
+    }
 #elif !defined(CONFIG_SOC_SDMMC_USE_GPIO_MATRIX)
     return ESP_ERR_NOT_SUPPORTED;
 #endif
-    if (card_ready || transport != SD_CARD_TRANSPORT_NONE) {
+    if (card_ready) {
         return ESP_ERR_INVALID_STATE;
     }
     sdmmc_pins[0] = clk_pin;
@@ -405,7 +445,7 @@ esp_err_t sd_card_configure_sdmmc(int clk_pin,
 
 esp_err_t sd_card_clear_sdmmc_config(void)
 {
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC && !SOLAR_OS_BOARD_STORAGE_SDSPI
+#if (SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC) && !SOLAR_OS_BOARD_STORAGE_SDSPI
     if (transport != SD_CARD_TRANSPORT_SDMMC) {
         return ESP_ERR_NOT_FOUND;
     }
@@ -833,9 +873,33 @@ static esp_err_t ensure_card_ready(void)
         sdspi_device_ready = true;
     } else
 #endif
-#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC
+#if SOLAR_OS_PACKAGE_EXPANSION_SDMMC || SOLAR_OS_BOARD_STORAGE_SDMMC
     if (transport == SD_CARD_TRANSPORT_SDMMC) {
         host = (sdmmc_host_t)SDMMC_HOST_DEFAULT();
+#if CONFIG_IDF_TARGET_ESP32P4
+        host.slot = SDMMC_HOST_SLOT_0;
+        host.max_freq_khz = SDMMC_FREQ_DEFAULT;
+#if SOC_SDMMC_IO_POWER_EXTERNAL
+        static sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
+        if (pwr_ctrl_handle == NULL) {
+            sd_pwr_ctrl_ldo_config_t ldo_config = {
+                .ldo_chan_id = 4,
+            };
+            ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to create on-chip LDO power control: %s", esp_err_to_name(ret));
+                diagnostics_init_error = ret;
+                set_mount_error_status(ret);
+                return ret;
+            }
+        }
+        host.pwr_ctrl_handle = pwr_ctrl_handle;
+#endif
+#if CONFIG_ESP_HOSTED_SDIO_HOST_INTERFACE && (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0))
+        host.init = &sdmmc_host_init_dummy;
+        host.deinit = &sdmmc_host_deinit_dummy;
+#endif
+#endif
         sdmmc_slot_config_t slot_config;
         sd_card_make_slot_config(&slot_config);
         ret = host.init();

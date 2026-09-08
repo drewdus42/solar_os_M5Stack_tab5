@@ -1,8 +1,6 @@
 #include "solar_os_shell_commands.h"
 #include "solar_os_shell_common.h"
-#include "solar_os_shell_expansion_internal.h"
 #include "solar_os_shell_io.h"
-#include "solar_os_shell_tui_apps.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -19,7 +17,6 @@
 #include "solar_os_keys.h"
 #include "solar_os_pins.h"
 #include "solar_os_resources.h"
-#include "solar_os_shell.h"
 #include "solar_os_stream.h"
 #if SOLAR_OS_PACKAGE_EXPANSION_SDSPI && !SOLAR_OS_BOARD_HAS_SD
 #include "solar_os_sdspi.h"
@@ -41,8 +38,7 @@ static solar_os_shell_io_t *terminal(solar_os_context_t *ctx)
 static void expansion_print_usage(solar_os_shell_io_t *term)
 {
     solar_os_shell_io_writeln(term, "usage:");
-    solar_os_shell_io_writeln(term, "  expansion");
-    solar_os_shell_io_writeln(term, "  expansion status");
+    solar_os_shell_io_writeln(term, "  expansion [status]");
     solar_os_shell_io_writeln(term, "  expansion layout [connector]");
     solar_os_shell_io_writeln(term, "  expansion scan");
     solar_os_shell_io_writeln(term, "  expansion drivers");
@@ -822,10 +818,9 @@ static bool binding_store(solar_os_expansion_binding_t *bindings,
     return true;
 }
 
-bool solar_os_shell_expansion_parse_binding_token(
-    const char *arg,
-    solar_os_expansion_binding_t *bindings,
-    size_t *binding_count)
+static bool parse_binding_token(const char *arg,
+                                solar_os_expansion_binding_t *bindings,
+                                size_t *binding_count)
 {
     char key[16];
     const char *value = NULL;
@@ -1102,7 +1097,7 @@ static void expansion_cmd_attach(solar_os_shell_io_t *term, int argc, char **arg
     }
 
     for (int i = 4; i < argc; i++) {
-        if (!solar_os_shell_expansion_parse_binding_token(argv[i], bindings, &binding_count)) {
+        if (!parse_binding_token(argv[i], bindings, &binding_count)) {
             solar_os_shell_io_printf(term, "expansion attach: invalid resource syntax or value '%s'\n", argv[i]);
             expansion_print_driver_usage(term, &driver);
             return;
@@ -1962,18 +1957,7 @@ void solar_os_shell_cmd_expansion(solar_os_context_t *ctx, int argc, char **argv
 {
     solar_os_shell_io_t *term = terminal(ctx);
 
-    if (argc == 1) {
-        const esp_err_t err = solar_os_shell_launch_expansion_tui(ctx);
-        if (err != ESP_OK) {
-            solar_os_shell_io_printf(term,
-                                     "expansion: could not start TUI: %s\n",
-                                     solar_os_shell_error_text(err));
-        } else {
-            solar_os_shell_session_prepare_foreground_launch(ctx, true);
-        }
-        return;
-    }
-    if (strcmp(argv[1], "status") == 0) {
+    if (argc == 1 || strcmp(argv[1], "status") == 0) {
         if (argc > 2) {
             solar_os_shell_diag_unexpected(term, "expansion status", argv[2], "expansion status");
             return;

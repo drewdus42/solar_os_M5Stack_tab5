@@ -54,7 +54,8 @@ static void *docs_app_state;
 
 static size_t docs_app_visible_rows(void)
 {
-    return solar_os_tui_screen_content_rows(&docs_app.tui, 1U, 1U);
+    const size_t rows = solar_os_tui_rows(&docs_app.tui);
+    return rows > 2U ? rows - 2U : 0U;
 }
 
 static bool docs_section_info(size_t wanted, docs_section_info_t *info)

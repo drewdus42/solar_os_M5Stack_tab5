@@ -251,7 +251,8 @@ static bool playground_node_at(size_t visible_index,
 
 static size_t playground_visible_rows(void)
 {
-    return solar_os_tui_screen_content_rows(&playground.tui, 1U, 1U);
+    const size_t rows = solar_os_tui_rows(&playground.tui);
+    return rows > 2U ? rows - 2U : 0U;
 }
 
 static const char *playground_runtime_short(
@@ -358,8 +359,7 @@ static void playground_render_tree(void)
             SOLAR_OS_TUI_ATTR_INVERSE : SOLAR_OS_TUI_ATTR_NORMAL;
         solar_os_tui_write_cell(&playground.tui, row + 1U, 0U, cols, line, attr);
     }
-    const size_t content_end = solar_os_tui_screen_content_end(&playground.tui, 1U);
-    for (size_t row = visible_rows + 1U; row < content_end; row++) {
+    for (size_t row = visible_rows + 1U; row + 1U < rows; row++) {
         solar_os_tui_write_cell(&playground.tui, row, 0U, cols, "", SOLAR_OS_TUI_ATTR_NORMAL);
     }
 
@@ -370,9 +370,7 @@ static void playground_render_tree(void)
         footer = "Uninstall selected application? y/N";
     }
     if (rows > 1U) {
-        solar_os_tui_draw_footer(&playground.tui, playground.status,
-                                 playground.uninstall_prompt ? footer :
-                                     "/ search  Enter select  [i]nstall  [u]ninstall  [r]efresh  [q]uit");
+        solar_os_tui_draw_help(&playground.tui, footer);
     }
 }
 
@@ -399,8 +397,7 @@ static void playground_render_details(void)
     const bool installed = solar_os_playground_is_installed(
         &app, installed_version, sizeof(installed_version));
     size_t row = 1U;
-    const size_t content_end = solar_os_tui_screen_content_end(&playground.tui, 1U);
-    if (row < content_end) {
+    if (row + 1U < rows) {
         snprintf(line,
                  sizeof(line),
                  "%s %s  v%s",
@@ -409,15 +406,15 @@ static void playground_render_details(void)
                  app.version);
         solar_os_tui_write_cell(&playground.tui, row++, 0U, cols, line, SOLAR_OS_TUI_ATTR_BOLD);
     }
-    if (row < content_end) {
+    if (row + 1U < rows) {
         solar_os_tui_write_cell(&playground.tui,
             row++, 0U, cols, app.description, SOLAR_OS_TUI_ATTR_NORMAL);
     }
-    if (row < content_end) {
+    if (row + 1U < rows) {
         snprintf(line, sizeof(line), "by %s", app.author);
         solar_os_tui_write_cell(&playground.tui, row++, 0U, cols, line, SOLAR_OS_TUI_ATTR_NORMAL);
     }
-    if (row < content_end) {
+    if (row + 1U < rows) {
         if (!app.compatible) {
             snprintf(line, sizeof(line), "Unavailable: %s", app.incompatibility);
         } else if (installed) {
@@ -435,7 +432,7 @@ static void playground_render_details(void)
         }
         solar_os_tui_write_cell(&playground.tui, row++, 0U, cols, line, SOLAR_OS_TUI_ATTR_NORMAL);
     }
-    while (row < content_end) {
+    while (row + 1U < rows) {
         solar_os_tui_write_cell(&playground.tui, row++, 0U, cols, "", SOLAR_OS_TUI_ATTR_NORMAL);
     }
     const char *footer = playground.status[0] != '\0' ?
@@ -446,11 +443,7 @@ static void playground_render_details(void)
         footer = "Uninstall selected application? y/N";
     }
     if (rows > 1U) {
-        solar_os_tui_draw_footer(&playground.tui, playground.status,
-                                 playground.uninstall_prompt ? footer :
-                                     (installed ?
-                                         "[r]un  [i]nstall  [u]ninstall  Esc back" :
-                                         "[i]nstall  Esc back"));
+        solar_os_tui_draw_help(&playground.tui, footer);
     }
 }
 

@@ -317,9 +317,7 @@ static void sheet_write_line(size_t row, const char *text, uint8_t attr)
 static size_t sheet_body_rows(void)
 {
     const size_t rows = solar_os_tui_rows(&sheet.tui);
-    const size_t footer_rows = solar_os_tui_screen_fullscreen(&sheet.tui) ?
-        (sheet.input_mode == SHEET_INPUT_FORMULA ? 1U : 0U) : 1U;
-    return rows > 2U + footer_rows ? rows - 2U - footer_rows : 1U;
+    return rows > 3U ? rows - 3U : 1U;
 }
 
 static size_t sheet_visible_cols(void)
@@ -395,15 +393,7 @@ static void sheet_render_footer(void)
 
     const size_t rows = solar_os_tui_rows(&sheet.tui);
     if (rows > 0) {
-        if (!solar_os_tui_screen_fullscreen(&sheet.tui)) {
-            solar_os_tui_draw_help(&sheet.tui, footer);
-        } else if (sheet.input_mode == SHEET_INPUT_FORMULA) {
-            solar_os_tui_write_cell(&sheet.tui, rows - 1U, 0U,
-                                    solar_os_tui_cols(&sheet.tui), footer,
-                                    SOLAR_OS_TUI_ATTR_INVERSE);
-        } else {
-            solar_os_tui_draw_footer(&sheet.tui, sheet.message, NULL);
-        }
+        solar_os_tui_draw_help(&sheet.tui, footer);
     }
 }
 
@@ -878,14 +868,7 @@ static void sheet_stop(solar_os_context_t *ctx)
 
 static bool sheet_event(solar_os_context_t *ctx, const solar_os_event_t *event)
 {
-    if (event == NULL) {
-        return false;
-    }
-    if (event->type == SOLAR_OS_EVENT_RESUME) {
-        sheet_render(ctx);
-        return true;
-    }
-    if (event->type != SOLAR_OS_EVENT_CHAR) {
+    if (event == NULL || event->type != SOLAR_OS_EVENT_CHAR) {
         return false;
     }
 

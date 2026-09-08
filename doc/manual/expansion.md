@@ -45,20 +45,10 @@ backend and the `midi` background job owns the connection while it runs.
 ## Discover what is present
 
 ```text
-expansion
-expansion status
 expansion drivers
 expansion devices
 display list
 ```
-
-`expansion` opens the device manager. Its Devices view lists current
-attachments and opens their details; detachable runtime devices can be removed
-after confirmation. Its Drivers view groups drivers by category and opens an
-attachment form for drivers supported by the running board. Binding forms use
-existing named buses; create, attach, detach, or remove buses in the `io` app.
-`expansion status` retains the textual capabilities, buses, devices, and claims
-report for scripts and terminal inspection.
 
 `expansion drivers` groups compiled drivers under bold Audio, Display, Input,
 Power, Radio, Sensor, Storage, and Utility headings, with driver names sorted

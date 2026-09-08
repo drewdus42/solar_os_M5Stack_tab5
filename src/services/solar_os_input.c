@@ -1450,14 +1450,10 @@ static size_t input_read_chars_for_source(solar_os_input_source_t source,
             (event.action == SOLAR_OS_INPUT_KEY_PRESS ||
              event.action == SOLAR_OS_INPUT_KEY_REPEAT) &&
             event.key != 0;
-        const bool tui_fullscreen_altgr =
-            (event.modifiers & SOLAR_OS_INPUT_MOD_RIGHT_ALT) != 0 &&
-            (event.key == SOLAR_OS_KEY_ENTER || event.key == '\r');
         const bool emits_alt_prefix = emits_char &&
             ((((event.modifiers & SOLAR_OS_INPUT_MOD_ALT) != 0) && event.key == '\t') ||
              (((event.modifiers & SOLAR_OS_INPUT_MOD_LEFT_ALT) != 0) &&
-              event.key != SOLAR_OS_KEY_APP_EXIT) ||
-             tui_fullscreen_altgr);
+              event.key != SOLAR_OS_KEY_APP_EXIT));
         const size_t needed = emits_char ? (emits_alt_prefix ? 2U : 1U) : 0U;
         if (!selected || count + needed > buffer_len) {
             retained[kept++] = event;
@@ -1616,7 +1612,6 @@ static uint8_t input_usage_to_de(uint16_t usage,
     const bool altgr = (modifiers & SOLAR_OS_INPUT_MOD_RIGHT_ALT) != 0;
     if (altgr) {
         switch (usage) {
-        case 0x28: return SOLAR_OS_KEY_ENTER;
         case 0x2b: return '\t';
         case 0x14: return '@';
         case 0x24: return '{';

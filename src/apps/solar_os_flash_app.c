@@ -452,9 +452,7 @@ static void flash_app_render_tabs(flash_app_state_t *state, size_t cols) {
 
 static void flash_app_render_catalog(flash_app_state_t *state, size_t rows,
                                      size_t cols) {
-  (void)rows;
-  const size_t visible_rows = solar_os_tui_screen_content_rows(
-      &state->tui, 2U, 1U);
+  const size_t visible_rows = rows > 3U ? rows - 3U : 0U;
   flash_app_ensure_visible(state, visible_rows);
   if (!solar_os_storage_sd_is_mounted()) {
     solar_os_tui_write_cell(&state->tui, 3U, 2U, cols > 4U ? cols - 4U : 0U,
@@ -603,21 +601,18 @@ static void flash_app_render_footer(flash_app_state_t *state, size_t rows,
   solar_os_tui_draw_help(&state->tui, footer);
 }
 
-static solar_os_tui_rect_t flash_app_popup_bounds(const flash_app_state_t *state,
-                                                   size_t rows, size_t cols) {
-  const size_t height = solar_os_tui_screen_content_rows(
-      &state->tui, 1U, 1U);
+static solar_os_tui_rect_t flash_app_popup_bounds(size_t rows, size_t cols) {
   return (solar_os_tui_rect_t){
       .row = rows > 2U ? 1U : 0U,
       .col = 0U,
-      .height = rows > 2U ? height : rows,
+      .height = rows > 2U ? rows - 2U : rows,
       .width = cols,
   };
 }
 
 static void flash_app_render_modal(flash_app_state_t *state, size_t rows,
                                    size_t cols) {
-  const solar_os_tui_rect_t bounds = flash_app_popup_bounds(state, rows, cols);
+  const solar_os_tui_rect_t bounds = flash_app_popup_bounds(rows, cols);
   solar_os_tui_rect_t popup = {0};
   char text[256];
   const solar_os_flash_artifact_t *artifact = &state->artifact;
@@ -990,9 +985,8 @@ static void flash_app_move_catalog(flash_app_state_t *state, int delta) {
 }
 
 static void flash_app_move_catalog_page(flash_app_state_t *state, bool down) {
-  const size_t content_rows = solar_os_tui_screen_content_rows(
-      &state->tui, 2U, 1U);
-  const size_t visible = content_rows > 0U ? content_rows : 1U;
+  const size_t rows = solar_os_tui_rows(&state->tui);
+  const size_t visible = rows > 3U ? rows - 3U : 1U;
   const size_t step = visible > 1U ? visible - 1U : 1U;
   const size_t count = flash_app_visible_count(state);
   if (count == 0U)
@@ -1376,10 +1370,6 @@ static bool flash_app_event(solar_os_context_t *ctx,
                             const solar_os_event_t *event) {
   if (flash_app == NULL || event == NULL)
     return false;
-  if (event->type == SOLAR_OS_EVENT_RESUME) {
-    flash_app_render(flash_app);
-    return true;
-  }
   if (event->type == SOLAR_OS_EVENT_TICK) {
     flash_app_drain_events(flash_app);
     if (flash_app->command_exit_requested) {

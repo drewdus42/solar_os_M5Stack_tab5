@@ -94,7 +94,9 @@ static slip_job_state_t slip_job = {
     .last_error = ESP_OK,
 };
 
-#ifdef CONFIG_ESP_NETIF_RECEIVE_REPORT_ERRORS
+#include "esp_idf_version.h"
+#if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)) || defined(CONFIG_ESP_NETIF_RECEIVE_REPORT_ERRORS)
+typedef esp_err_t esp_netif_recv_ret_t;
 #define SLIP_INPUT_RETURN(err) return (err)
 #else
 #define SLIP_INPUT_RETURN(err) return

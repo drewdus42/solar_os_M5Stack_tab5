@@ -1331,29 +1331,19 @@ static void chat_draw_messages(size_t start_row,
 
 static void chat_draw_input(size_t rows, size_t cols)
 {
-    const size_t help_rows = solar_os_tui_screen_bottom_rows(&chat_app.tui, 1U);
-    const size_t input_rows = CHAT_APP_INPUT_ROWS - 1U + help_rows;
-    if (rows < input_rows) {
+    if (rows < CHAT_APP_INPUT_ROWS) {
         return;
     }
 
-    const size_t sep_row = rows - input_rows;
-    const size_t input_row = rows - 1U - help_rows;
+    const size_t sep_row = rows - CHAT_APP_INPUT_ROWS;
+    const size_t input_row = rows - 2U;
 
     solar_os_tui_set_cursor_visible(&chat_app.tui, false);
     solar_os_tui_hline(&chat_app.tui, sep_row, 0, cols, 0, SOLAR_OS_TUI_ATTR_NORMAL);
-    if (solar_os_tui_screen_fullscreen(&chat_app.tui)) {
-        if (chat_app.status[0] != '\0') {
-            solar_os_tui_write_cell(&chat_app.tui, sep_row, 0U, cols,
-                                    chat_app.status,
-                                    SOLAR_OS_TUI_ATTR_INVERSE);
-        }
-    } else {
-        solar_os_tui_draw_help(
-            &chat_app.tui,
-            chat_app.status[0] != '\0' ? chat_app.status :
-                "TAB channels  ENTER send  /help commands  ESC exits");
-    }
+    solar_os_tui_draw_help(
+        &chat_app.tui,
+        chat_app.status[0] != '\0' ? chat_app.status :
+            "TAB channels  ENTER send  /help commands  ESC exits");
 
     const size_t input_width = cols > 2U ? cols - 2U : 0U;
     if (chat_app.input_cursor < chat_app.input_view_offset) {
@@ -1389,8 +1379,10 @@ static void chat_draw_channel_footer(size_t rows, size_t cols)
         return;
     }
     solar_os_tui_set_cursor_visible(&chat_app.tui, false);
-    solar_os_tui_draw_footer(&chat_app.tui, chat_app.status,
-                             "UP/DOWN select  ENTER join/open  TAB chat  ESC exits");
+    solar_os_tui_draw_help(
+        &chat_app.tui,
+        chat_app.status[0] != '\0' ? chat_app.status :
+            "UP/DOWN select  ENTER join/open  TAB chat  ESC exits");
 }
 
 static void chat_render(void)
@@ -1409,17 +1401,14 @@ static void chat_render(void)
 
     chat_draw_tabs(cols);
     if (chat_app.tab == CHAT_APP_TAB_CHANNELS) {
-        const size_t footer_rows = solar_os_tui_screen_bottom_rows(
-            &chat_app.tui, 1U);
+        const size_t footer_rows = 1U;
         const size_t body_rows = rows > CHAT_APP_TAB_ROWS + footer_rows ?
             rows - CHAT_APP_TAB_ROWS - footer_rows : 0U;
         chat_draw_channels(CHAT_APP_TAB_ROWS, cols, body_rows);
         chat_draw_channel_footer(rows, cols);
     } else {
-        const size_t input_rows = CHAT_APP_INPUT_ROWS - 1U +
-            solar_os_tui_screen_bottom_rows(&chat_app.tui, 1U);
-        const size_t body_rows = rows > CHAT_APP_TAB_ROWS + input_rows ?
-            rows - CHAT_APP_TAB_ROWS - input_rows : 0U;
+        const size_t body_rows = rows > CHAT_APP_TAB_ROWS + CHAT_APP_INPUT_ROWS ?
+            rows - CHAT_APP_TAB_ROWS - CHAT_APP_INPUT_ROWS : 0U;
         chat_draw_messages(CHAT_APP_TAB_ROWS, 0, cols, body_rows);
         chat_draw_input(rows, cols);
     }
@@ -1833,8 +1822,7 @@ static void chat_delete(void)
 static size_t chat_message_scroll_step(void)
 {
     const size_t rows = solar_os_tui_rows(&chat_app.tui);
-    const size_t reserved_rows = CHAT_APP_TAB_ROWS + CHAT_APP_INPUT_ROWS - 1U +
-        solar_os_tui_screen_bottom_rows(&chat_app.tui, 1U);
+    const size_t reserved_rows = CHAT_APP_TAB_ROWS + CHAT_APP_INPUT_ROWS;
     const size_t body_rows = rows > reserved_rows ? rows - reserved_rows : rows;
     const size_t text_rows = body_rows > 1U ? body_rows - 1U : 1U;
 

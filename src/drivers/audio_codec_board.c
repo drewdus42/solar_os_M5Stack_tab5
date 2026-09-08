@@ -12,6 +12,9 @@
 #include "esp_log.h"
 #include "i2c_bus.h"
 #include "soc/soc_caps.h"
+#ifndef SOC_I2S_NUM
+#define SOC_I2S_NUM 3
+#endif
 #include "solar_os_audio.h"
 #include "solar_os_audio_backend.h"
 

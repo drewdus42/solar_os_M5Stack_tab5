@@ -26,10 +26,13 @@ if(NOT DEFINED SOLAR_OS_BOARD OR SOLAR_OS_BOARD STREQUAL "")
         set(SOLAR_OS_BOARD "$ENV{SOLAR_OS_BOARD}")
     elseif(DEFINED ENV{PIOENV} AND NOT "$ENV{PIOENV}" STREQUAL "")
         set(SOLAR_OS_BOARD "$ENV{PIOENV}")
+    elseif(IDF_TARGET STREQUAL "esp32p4")
+        set(SOLAR_OS_BOARD "m5stack_tab5")
     else()
         set(SOLAR_OS_BOARD "solar_term")
     endif()
 endif()
+set(SOLAR_OS_BOARD "${SOLAR_OS_BOARD}" CACHE STRING "SolarOS board target" FORCE)
 
 set(SOLAR_OS_BOARD_MANIFEST_DIR "${SOLAR_OS_PROJECT_DIR}/boards/manifests")
 set(SOLAR_OS_BOARD_MANIFEST "${SOLAR_OS_BOARD_MANIFEST_DIR}/${SOLAR_OS_BOARD}.toml")
@@ -172,6 +175,7 @@ if(NOT DEFINED SOLAR_OS_FLAVOR OR SOLAR_OS_FLAVOR STREQUAL "")
         set(SOLAR_OS_FLAVOR "full")
     endif()
 endif()
+set(SOLAR_OS_FLAVOR "${SOLAR_OS_FLAVOR}" CACHE STRING "SolarOS flavor" FORCE)
 
 if(NOT DEFINED SOLAR_OS_LAYOUT OR SOLAR_OS_LAYOUT STREQUAL "")
     if(DEFINED ENV{SOLAR_OS_LAYOUT} AND NOT "$ENV{SOLAR_OS_LAYOUT}" STREQUAL "")
@@ -459,6 +463,31 @@ idf_component_register(
                  "../include" "${SOLAR_OS_GENERATED_DIR}"
                  ${SOLAR_OS_EXTRA_INCLUDE_DIRS}
     REQUIRES ${SOLAR_OS_REQUIRES}
+)
+
+target_compile_options(${COMPONENT_LIB} PRIVATE
+    -Wno-error=unused-const-variable
+    -Wno-error=format-truncation
+    -Wno-format-truncation
+    -Wno-error=format
+    -Wno-format
+    -Wno-error=maybe-uninitialized
+    -Wno-error=unused-function
+    -Wno-error=type-limits
+    -Wno-error=missing-field-initializers
+    -Wno-missing-field-initializers
+    -Wno-error=address
+    -Wno-address
+    -Wno-error=clobbered
+    -Wno-clobbered
+    -Wno-error=restrict
+    -Wno-restrict
+    $<$<COMPILE_LANGUAGE:C>:-Wno-error=pointer-sign>
+    $<$<COMPILE_LANGUAGE:C>:-Wno-pointer-sign>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=reorder>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-reorder>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-error=class-memaccess>
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-class-memaccess>
 )
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE

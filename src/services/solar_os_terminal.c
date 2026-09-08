@@ -1020,6 +1020,7 @@ void solar_os_terminal_clear(solar_os_terminal_t *terminal)
     terminal->cursor_visible = true;
     terminal->vrule_count = 0;
     solar_os_terminal_utf8_reset(terminal);
+    solar_os_terminal_invalidate_render(terminal);
     solar_os_terminal_mark_dirty(terminal);
 }
 

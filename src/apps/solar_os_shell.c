@@ -408,6 +408,7 @@ static const shell_command_t shell_builtin_commands[] = {
     {"schedule", "alarms and scheduled scripts", solar_os_shell_cmd_schedule},
     {"watch", "repeat a command", cmd_watch},
     {"setterm", "configure terminal settings", solar_os_shell_cmd_setterm},
+    {"kbd", "keyboard backlight and RGB control", solar_os_shell_cmd_keylight},
     {"status", "show system status", solar_os_shell_cmd_status},
     {"uptime", "show time since boot", solar_os_shell_cmd_uptime},
     {"mem", "show free memory", solar_os_shell_cmd_mem},
@@ -3860,6 +3861,22 @@ static void shell_backspace(solar_os_context_t *ctx)
             &shell_session(ctx)->input[shell_session(ctx)->input_cursor],
             shell_session(ctx)->input_len - shell_session(ctx)->input_cursor + 1);
     shell_session(ctx)->input_cursor--;
+    shell_session(ctx)->input_len--;
+    shell_render_input(ctx);
+}
+
+static void shell_delete_forward(solar_os_context_t *ctx)
+{
+    if (shell_session(ctx)->input_cursor >= shell_session(ctx)->input_len) {
+        return;
+    }
+    if (!shell_can_redraw_input(ctx)) {
+        return;
+    }
+
+    memmove(&shell_session(ctx)->input[shell_session(ctx)->input_cursor],
+            &shell_session(ctx)->input[shell_session(ctx)->input_cursor + 1],
+            shell_session(ctx)->input_len - shell_session(ctx)->input_cursor);
     shell_session(ctx)->input_len--;
     shell_render_input(ctx);
 }
@@ -9182,6 +9199,18 @@ static void shell_handle_char(solar_os_context_t *ctx, char ch)
         break;
     case '\b':
         if (shell_session(ctx)->input_cursor > 0) {
+            shell_session(ctx)->history_browsing = false;
+            shell_session(ctx)->history_index = -1;
+            shell_backspace(ctx);
+        }
+        break;
+    case 0x7fU:
+    case SOLAR_OS_KEY_DELETE:
+        if (shell_session(ctx)->input_cursor < shell_session(ctx)->input_len) {
+            shell_session(ctx)->history_browsing = false;
+            shell_session(ctx)->history_index = -1;
+            shell_delete_forward(ctx);
+        } else if (shell_session(ctx)->input_cursor > 0) {
             shell_session(ctx)->history_browsing = false;
             shell_session(ctx)->history_index = -1;
             shell_backspace(ctx);

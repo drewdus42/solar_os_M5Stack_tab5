@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "solar_os_memory.h"
-#include "solar_os_sessions.h"
 #include "solar_os_shell_io.h"
 #include "solar_os_terminal.h"
 
@@ -567,29 +566,11 @@ esp_err_t solar_os_tui_begin(solar_os_tui_t *tui, solar_os_context_t *ctx)
     return tui_valid(tui) ? ESP_OK : ESP_ERR_INVALID_STATE;
 }
 
-void solar_os_tui_attach_session(solar_os_tui_t *tui)
-{
-    if (tui != NULL && tui->screen_active) {
-        solar_os_sessions_attach_tui(tui->io, tui);
-    }
-}
-
 void solar_os_tui_end(solar_os_tui_t *tui)
 {
     if (tui == NULL) {
         return;
     }
-    if (tui->screen_active) {
-        solar_os_sessions_detach_tui(tui->io, tui);
-        tui->screen_active = false;
-    }
-    if (tui->status_bar_overridden && tui->terminal != NULL) {
-        (void)solar_os_terminal_set_status_bar_visible_transient(
-            tui->terminal, tui->saved_status_bar_visible);
-        tui->status_bar_overridden = false;
-    }
-    tui->fullscreen = false;
-    tui->alt_prefix_pending = false;
     tui_free_diff_buffers(tui);
     tui->diff_enabled = false;
     if (tui_valid(tui)) {

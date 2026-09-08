@@ -1140,9 +1140,7 @@ static void recorder_render_browser_tui(size_t rows, size_t cols)
 {
     const size_t count = solar_os_storage_browser_count(recorder.browser);
     const size_t cursor = solar_os_storage_browser_cursor(recorder.browser);
-    const size_t bottom_rows = solar_os_tui_screen_bottom_rows(&recorder.tui, 1U);
-    const size_t list_rows = rows > 2U + bottom_rows ?
-        rows - 2U - bottom_rows : 0U;
+    const size_t list_rows = rows > 3U ? rows - 3U : 0U;
     if (cursor < recorder.browser_top) recorder.browser_top = cursor;
     if (list_rows > 0U && cursor >= recorder.browser_top + list_rows) {
         recorder.browser_top = cursor - list_rows + 1U;
@@ -1238,11 +1236,9 @@ static void recorder_render_tui(void)
     if (recorder.editing_filename) {
         char edit[144];
         snprintf(edit, sizeof(edit), "Filename: %s_", recorder.edit_filename);
-        const size_t input_row = solar_os_tui_screen_fullscreen(&recorder.tui) ?
-            rows - 1U : rows - 3U;
-        solar_os_tui_fill(&recorder.tui, input_row, 0U, 1U, cols, ' ',
+        solar_os_tui_fill(&recorder.tui, rows - 3U, 0U, 1U, cols, ' ',
                           SOLAR_OS_TUI_ATTR_INVERSE);
-        solar_os_tui_addstr(&recorder.tui, input_row, 1U, edit,
+        solar_os_tui_addstr(&recorder.tui, rows - 3U, 1U, edit,
                             SOLAR_OS_TUI_ATTR_INVERSE);
     }
     solar_os_tui_set_cursor_visible(&recorder.tui, false);

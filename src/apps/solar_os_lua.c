@@ -920,7 +920,9 @@ static void solua_push_mqtt_message(lua_State *L, const solar_os_mqtt_message_t 
     solua_set_bool(L, -1, "retain", message->retain);
     solua_set_bool(L, -1, "truncated", message->truncated);
 }
+#endif
 
+#if SOLAR_OS_PACKAGE_SERVICE_SSH
 static void solua_push_ssh_key_status(lua_State *L, const solar_os_ssh_key_status_t *status)
 {
     lua_newtable(L);
@@ -3253,6 +3255,7 @@ static solar_os_osc_edge_t solua_osc_edge(lua_State *L, int index)
         return SOLAR_OS_OSC_EDGE_BOTH;
     }
     luaL_error(L, "expected edge rising, falling, or both");
+    return SOLAR_OS_OSC_EDGE_BOTH;
 }
 
 static int solua_osc_bind_event(lua_State *L)

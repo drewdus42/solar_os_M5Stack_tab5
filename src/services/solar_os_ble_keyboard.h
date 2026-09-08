@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "solar_os_config.h"
 #include "solar_os_input.h"
 #include "solar_os_keys.h"
 
@@ -100,7 +101,16 @@ bool solar_os_ble_keyboard_is_scanning(void);
 bool solar_os_ble_keyboard_is_pairing(void);
 size_t solar_os_ble_keyboard_remembered_count(void);
 void solar_os_ble_keyboard_get_status(char *buffer, size_t buffer_len);
+#if SOLAR_OS_PACKAGE_SERVICE_BLE
 size_t solar_os_ble_keyboard_read_chars(char *buffer, size_t buffer_len);
+#else
+static inline size_t solar_os_ble_keyboard_read_chars(char *buffer, size_t buffer_len)
+{
+    (void)buffer;
+    (void)buffer_len;
+    return 0;
+}
+#endif
 void solar_os_ble_keyboard_get_key_state(solar_os_ble_keyboard_key_state_t *state);
 void solar_os_ble_keyboard_get_repeat(uint16_t *rate_cps, uint16_t *delay_ms);
 esp_err_t solar_os_ble_keyboard_set_repeat(uint16_t rate_cps, uint16_t delay_ms);

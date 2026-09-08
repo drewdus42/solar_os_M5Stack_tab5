@@ -34,7 +34,8 @@
 #include "solar_os_wifi.h"
 #include "wireguard.h"
 #include "wireguardif.h"
-#include "crypto.h"
+
+void crypto_zero(void *dest, size_t len);
 
 #define TAG "wireguard"
 #define WIREGUARD_NVS_NAMESPACE "wireguard"

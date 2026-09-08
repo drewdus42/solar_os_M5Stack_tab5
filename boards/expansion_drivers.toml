@@ -27,6 +27,32 @@ targets = ["esp32s3"]
 capabilities = ["i2c", "pwm"]
 default_name = "keyboard0"
 
+[drivers.m5tab5-keyboard]
+summary = "M5Tab5 bottom hardware keyboard"
+package = "m5tab5_keyboard"
+targets = ["esp32p4"]
+capabilities = ["i2c"]
+default_name = "keyboard0"
+
+[[drivers.m5tab5-keyboard.bindings]]
+key = "i2c"
+kind = "i2c_bus"
+hint = "bus"
+required = true
+
+[[drivers.m5tab5-keyboard.bindings]]
+key = "addr"
+kind = "i2c_address"
+hint = "0x6d"
+required = true
+allowed = [0x6d]
+
+[[drivers.m5tab5-keyboard.bindings]]
+key = "irq"
+kind = "gpio"
+hint = "gpio"
+
+
 [[drivers.tca8418.bindings]]
 key = "i2c"
 kind = "i2c_bus"
@@ -190,7 +216,7 @@ required = true
 [drivers.sdmmc]
 summary = "SDMMC card"
 package = "expansion_sdmmc"
-targets = ["esp32", "esp32s3"]
+targets = ["esp32", "esp32s3", "esp32p4"]
 capabilities = ["expansion_gpio"]
 board_capabilities = ["sd"]
 board_driver = "storage_expansion"
@@ -734,7 +760,7 @@ required = true
 [drivers.es8311-duplex]
 summary = "ES8311 duplex audio"
 package = "driver_audio_es8311_codecs"
-targets = ["esp32s3"]
+targets = ["esp32s3", "esp32p4"]
 capabilities = ["i2c", "expansion_i2s"]
 board_capabilities = ["audio", "audio_input"]
 board_driver = "audio_es8311_duplex"
@@ -1020,3 +1046,109 @@ kind = "i2c_address"
 hint = "0x55"
 required = true
 allowed = [0x55]
+
+[drivers.m5tab5]
+summary = "M5Stack Tab5 MIPI DSI display"
+package = "driver_display_m5tab5"
+targets = ["esp32p4"]
+capabilities = ["gfx"]
+board_capabilities = ["display", "gfx", "display_brightness", "streaming_display"]
+board_driver = "display_m5tab5"
+early = true
+default_name = "display0"
+
+[[drivers.m5tab5.bindings]]
+key = "bl"
+kind = "gpio"
+hint = "gpio"
+
+[[drivers.m5tab5.bindings]]
+key = "active"
+kind = "parameter"
+hint = "0|1"
+role = "active"
+allowed = [0, 1]
+
+[[drivers.m5tab5.bindings]]
+key = "pwm"
+kind = "parameter"
+hint = "0|1"
+role = "pwm"
+allowed = [0, 1]
+
+[drivers.m5tab5-touch]
+summary = "M5Stack Tab5 touch controller"
+package = "driver_pointer_m5tab5"
+targets = ["esp32p4"]
+capabilities = ["i2c"]
+board_capabilities = ["pointer"]
+board_driver = "pointer_m5tab5"
+default_name = "touch0"
+
+[[drivers.m5tab5-touch.bindings]]
+key = "i2c"
+kind = "i2c_bus"
+hint = "bus"
+required = true
+
+[[drivers.m5tab5-touch.bindings]]
+key = "addr"
+kind = "i2c_address"
+hint = "0x5d|0x14|0x55"
+required = true
+allowed = [0x5d, 0x14, 0x55]
+
+[[drivers.m5tab5-touch.bindings]]
+key = "irq"
+kind = "gpio"
+hint = "gpio"
+
+[drivers.ina226]
+summary = "INA226 power monitor"
+package = "driver_battery_ina226"
+targets = ["esp32", "esp32s3", "esp32p4"]
+capabilities = ["i2c"]
+board_capabilities = ["battery"]
+board_driver = "battery_ina226"
+default_name = "battery0"
+
+[[drivers.ina226.bindings]]
+key = "i2c"
+kind = "i2c_bus"
+hint = "bus"
+required = true
+
+[[drivers.ina226.bindings]]
+key = "addr"
+kind = "i2c_address"
+hint = "0x40|0x41|0x44|0x45"
+required = true
+allowed = [0x40, 0x41, 0x44, 0x45]
+
+[drivers.rx8130]
+summary = "RX8130 real-time clock"
+package = "driver_rtc_rx8130"
+targets = ["esp32", "esp32s3", "esp32p4"]
+capabilities = ["i2c"]
+board_capabilities = ["rtc"]
+board_driver = "rtc_rx8130"
+default_name = "rtc0"
+
+[[drivers.rx8130.bindings]]
+key = "i2c"
+kind = "i2c_bus"
+hint = "bus"
+required = true
+
+[[drivers.rx8130.bindings]]
+key = "addr"
+kind = "i2c_address"
+hint = "0x32"
+required = true
+allowed = [0x32]
+
+[[drivers.rx8130.bindings]]
+key = "irq"
+kind = "gpio"
+hint = "gpio"
+

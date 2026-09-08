@@ -1,0 +1,3 @@
+set(SOLAR_OS_BOARD_BATTERY_DRIVER "ina226")
+include("${CMAKE_CURRENT_LIST_DIR}/i2c_esp_idf.cmake")
+list(APPEND SOLAR_OS_BOARD_REQUIRED_PACKAGES driver_battery_ina226)

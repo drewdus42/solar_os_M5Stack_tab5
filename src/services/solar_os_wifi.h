@@ -80,12 +80,6 @@ typedef struct {
     bool preferred;
 } solar_os_wifi_profile_t;
 
-typedef struct {
-    char ssid[SOLAR_OS_WIFI_SSID_MAX + 1];
-    char password[SOLAR_OS_WIFI_PASSWORD_MAX];
-    char auth[SOLAR_OS_WIFI_AUTH_MAX];
-} solar_os_wifi_ap_config_t;
-
 esp_err_t solar_os_wifi_init(void);
 bool solar_os_wifi_enabled_for_current_boot(void);
 bool solar_os_wifi_enabled_for_next_boot(void);
@@ -105,16 +99,10 @@ esp_err_t solar_os_wifi_known(solar_os_wifi_profile_t *profiles, size_t max_prof
 bool solar_os_wifi_is_known_ssid(const char *ssid);
 esp_err_t solar_os_wifi_ap_start(const char *ssid, const char *password, const char *auth);
 esp_err_t solar_os_wifi_ap_stop(void);
-esp_err_t solar_os_wifi_ap_saved_get(solar_os_wifi_ap_config_t *config);
-esp_err_t solar_os_wifi_ap_save(const char *ssid, const char *password, const char *auth);
-esp_err_t solar_os_wifi_ap_forget(void);
 esp_err_t solar_os_wifi_nat_set(bool enabled);
 esp_err_t solar_os_wifi_repeater_start(void);
 esp_err_t solar_os_wifi_repeater_stop(void);
 esp_err_t solar_os_wifi_scan(solar_os_wifi_ap_t *aps, size_t max_aps, size_t *found);
-esp_err_t solar_os_wifi_scan_start_async(void);
-esp_err_t solar_os_wifi_scan_results(solar_os_wifi_ap_t *aps, size_t max_aps, size_t *found);
-esp_err_t solar_os_wifi_scan_cancel_async(void);
 esp_err_t solar_os_wifi_connectionless_acquire(const char *owner,
                                                uint8_t requested_channel,
                                                uint8_t *actual_channel);

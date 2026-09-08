@@ -717,8 +717,9 @@ static void ping_print_usage(solar_os_shell_io_t *term)
 static bool shell_read_app_exit_key(void *user)
 {
     solar_os_shell_io_t *term = (solar_os_shell_io_t *)user;
-    char chars[8];
     size_t count;
+#if SOLAR_OS_PACKAGE_SERVICE_BLE
+    char chars[8];
 
     while ((count = solar_os_ble_keyboard_read_chars(chars, sizeof(chars))) > 0) {
         for (size_t i = 0; i < count; i++) {
@@ -728,6 +729,7 @@ static bool shell_read_app_exit_key(void *user)
             }
         }
     }
+#endif
 
     if (term == NULL ||
         solar_os_shell_io_kind(term) != SOLAR_OS_SHELL_IO_KIND_PORT ||

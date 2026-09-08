@@ -7,28 +7,6 @@
 #include "solar_os_keys.h"
 #include "solar_os_terminal.h"
 
-#define SOLAR_OS_TUI_AUTO_FULLSCREEN_MAX_ROWS 10U
-
-static esp_err_t tui_screen_set_fullscreen(solar_os_tui_t *tui, bool fullscreen)
-{
-    if (tui == NULL || !tui->screen_active) return ESP_ERR_INVALID_STATE;
-    if (tui->fullscreen == fullscreen) return ESP_OK;
-
-    if (tui->terminal != NULL) {
-        const esp_err_t err = solar_os_terminal_set_status_bar_visible_transient(
-            tui->terminal, fullscreen ? false : tui->saved_status_bar_visible);
-        if (err != ESP_OK) return err;
-        tui->status_bar_overridden = fullscreen;
-    }
-    tui->fullscreen = fullscreen;
-
-    if (tui->diff_enabled) {
-        (void)solar_os_tui_enable_diff(tui, false);
-        (void)solar_os_tui_enable_diff(tui, true);
-    }
-    return ESP_OK;
-}
-
 static size_t tui_widget_decode(const char *text, uint32_t *codepoint)
 {
     const unsigned char *p = (const unsigned char *)text;
@@ -122,78 +100,10 @@ esp_err_t solar_os_tui_screen_begin(solar_os_tui_t *tui, solar_os_context_t *ctx
 {
     esp_err_t err = solar_os_tui_begin(tui, ctx);
     if (err == ESP_OK) {
-        tui->screen_active = true;
-        tui->saved_status_bar_visible = tui->terminal != NULL &&
-            solar_os_terminal_status_bar_visible(tui->terminal);
-        const bool compact = solar_os_tui_screen_should_fullscreen(
-            solar_os_tui_rows(tui));
-        if (compact) {
-            err = tui_screen_set_fullscreen(tui, true);
-        }
-    }
-    if (err == ESP_OK) {
         err = solar_os_tui_enable_diff(tui, true);
-    }
-    if (err == ESP_OK) {
-        solar_os_tui_attach_session(tui);
-    } else if (tui != NULL) {
-        solar_os_tui_end(tui);
+        if (err != ESP_OK) solar_os_tui_end(tui);
     }
     return err;
-}
-
-bool solar_os_tui_screen_should_fullscreen(size_t rows)
-{
-    return rows > 0U && rows <= SOLAR_OS_TUI_AUTO_FULLSCREEN_MAX_ROWS;
-}
-
-bool solar_os_tui_screen_fullscreen(const solar_os_tui_t *tui)
-{
-    return tui != NULL && tui->screen_active && tui->fullscreen;
-}
-
-size_t solar_os_tui_screen_bottom_rows(const solar_os_tui_t *tui,
-                                       size_t normal_rows)
-{
-    return solar_os_tui_screen_fullscreen(tui) ? 0U : normal_rows;
-}
-
-size_t solar_os_tui_screen_content_rows(const solar_os_tui_t *tui,
-                                        size_t top_rows,
-                                        size_t normal_bottom_rows)
-{
-    const size_t rows = solar_os_tui_rows(tui);
-    const size_t bottom_rows = solar_os_tui_screen_bottom_rows(
-        tui, normal_bottom_rows);
-    const size_t reserved = top_rows + bottom_rows;
-    return rows > reserved ? rows - reserved : 0U;
-}
-
-size_t solar_os_tui_screen_content_end(const solar_os_tui_t *tui,
-                                       size_t normal_bottom_rows)
-{
-    const size_t rows = solar_os_tui_rows(tui);
-    const size_t bottom_rows = solar_os_tui_screen_bottom_rows(
-        tui, normal_bottom_rows);
-    return rows > bottom_rows ? rows - bottom_rows : 0U;
-}
-
-solar_os_tui_screen_key_action_t solar_os_tui_screen_key(solar_os_tui_t *tui,
-                                                         uint8_t key)
-{
-    if (tui == NULL || !tui->screen_active) return SOLAR_OS_TUI_SCREEN_KEY_NONE;
-    if (key == SOLAR_OS_KEY_ALT_PREFIX) {
-        tui->alt_prefix_pending = true;
-        return SOLAR_OS_TUI_SCREEN_KEY_CONSUMED;
-    }
-    if (!tui->alt_prefix_pending) return SOLAR_OS_TUI_SCREEN_KEY_NONE;
-
-    tui->alt_prefix_pending = false;
-    if (key != SOLAR_OS_KEY_ENTER && key != '\r') {
-        return SOLAR_OS_TUI_SCREEN_KEY_PASSTHROUGH;
-    }
-    return tui_screen_set_fullscreen(tui, !tui->fullscreen) == ESP_OK ?
-        SOLAR_OS_TUI_SCREEN_KEY_TOGGLED : SOLAR_OS_TUI_SCREEN_KEY_CONSUMED;
 }
 
 bool solar_os_tui_screen_layout(const solar_os_tui_t *tui,
@@ -203,39 +113,9 @@ bool solar_os_tui_screen_layout(const solar_os_tui_t *tui,
                                 solar_os_tui_screen_layout_t *layout)
 {
     if (tui == NULL || layout == NULL) return false;
-    if (solar_os_tui_screen_fullscreen(tui)) {
-        return solar_os_tui_layout_compute_fullscreen(solar_os_tui_rows(tui),
-                                                      solar_os_tui_cols(tui),
-                                                      tab_rows, input_rows, layout);
-    }
     return solar_os_tui_layout_compute(solar_os_tui_rows(tui),
                                        solar_os_tui_cols(tui),
                                        tab_rows, status_rows, input_rows, layout);
-}
-
-bool solar_os_tui_layout_compute_fullscreen(size_t rows,
-                                            size_t cols,
-                                            size_t tab_rows,
-                                            size_t input_rows,
-                                            solar_os_tui_screen_layout_t *layout)
-{
-    if (layout == NULL) return false;
-    const size_t fixed = 1U + tab_rows + input_rows;
-    memset(layout, 0, sizeof(*layout));
-    if (cols == 0U || rows <= fixed) return false;
-
-    layout->title = (solar_os_tui_rect_t){.row = 0, .col = 0, .height = 1, .width = cols};
-    layout->tabs = (solar_os_tui_rect_t){.row = 1, .col = 0, .height = tab_rows, .width = cols};
-    layout->help = (solar_os_tui_rect_t){.row = rows, .col = 0, .height = 0, .width = cols};
-    layout->input = (solar_os_tui_rect_t){.row = rows - input_rows,
-                                         .col = 0, .height = input_rows, .width = cols};
-    layout->status = (solar_os_tui_rect_t){.row = layout->input.row,
-                                          .col = 0, .height = 0, .width = cols};
-    const size_t body_row = 1U + tab_rows;
-    layout->body = (solar_os_tui_rect_t){.row = body_row, .col = 0,
-                                        .height = layout->input.row - body_row,
-                                        .width = cols};
-    return layout->body.height > 0U;
 }
 
 bool solar_os_tui_layout_compute(size_t rows,
@@ -313,27 +193,9 @@ esp_err_t solar_os_tui_draw_help(solar_os_tui_t *tui, const char *text)
     if (tui == NULL || text == NULL || solar_os_tui_rows(tui) == 0) {
         return ESP_ERR_INVALID_ARG;
     }
-    if (solar_os_tui_screen_fullscreen(tui)) return ESP_OK;
     return solar_os_tui_write_cell(tui, solar_os_tui_rows(tui) - 1U, 0,
                                    solar_os_tui_cols(tui), text,
                                    SOLAR_OS_TUI_ATTR_INVERSE);
-}
-
-esp_err_t solar_os_tui_draw_footer(solar_os_tui_t *tui,
-                                   const char *status,
-                                   const char *help)
-{
-    if (tui == NULL || solar_os_tui_rows(tui) == 0U) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    if (solar_os_tui_screen_fullscreen(tui)) {
-        if (status == NULL || status[0] == '\0') return ESP_OK;
-        return solar_os_tui_write_cell(tui, solar_os_tui_rows(tui) - 1U, 0U,
-                                       solar_os_tui_cols(tui), status,
-                                       SOLAR_OS_TUI_ATTR_INVERSE);
-    }
-    const char *text = status != NULL && status[0] != '\0' ? status : help;
-    return text != NULL ? solar_os_tui_draw_help(tui, text) : ESP_OK;
 }
 
 esp_err_t solar_os_tui_draw_tab(solar_os_tui_t *tui,

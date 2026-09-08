@@ -69,6 +69,7 @@ static const char symbol_map[TCA8418_KB_ROWS][TCA8418_KB_COLS] = {
     {' ', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'},
 };
 
+
 typedef struct {
     bool active;
     volatile bool stop_requested;
@@ -177,7 +178,7 @@ static esp_err_t write_reg(solar_os_tca8418_device_t *device, uint8_t reg, uint8
 
 static esp_err_t configure_matrix(solar_os_tca8418_device_t *device)
 {
-    /* Enable ROW0-3 and COL0-9 for keypad matrix scanning. */
+    /* Enable ROW and COL lines for keypad matrix scanning. */
     ESP_RETURN_ON_ERROR(write_reg(device, TCA8418_REG_KP_GPIO_1, 0x0FU), TAG, "KP_GPIO_1 failed");
     ESP_RETURN_ON_ERROR(write_reg(device, TCA8418_REG_KP_GPIO_2, 0xFFU), TAG, "KP_GPIO_2 failed");
     ESP_RETURN_ON_ERROR(write_reg(device, TCA8418_REG_KP_GPIO_3, 0x03U), TAG, "KP_GPIO_3 failed");

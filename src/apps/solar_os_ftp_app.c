@@ -807,11 +807,10 @@ static void ftp_app_draw_progress(size_t rows, size_t cols)
     if (!ftp_app.progress.active || rows < 4U || cols < 12U) {
         return;
     }
-    const size_t height = solar_os_tui_screen_content_rows(&ftp_app.tui, 1U, 2U);
     const solar_os_tui_rect_t bounds = {
         .row = rows > 2U ? 1U : 0U,
         .col = 0U,
-        .height = rows > 2U ? height : rows,
+        .height = rows > 2U ? rows - 2U : rows,
         .width = cols,
     };
     solar_os_tui_rect_t popup = {0};
@@ -860,21 +859,11 @@ static void ftp_app_render(void)
     solar_os_tui_write_cell(&ftp_app.tui, 0, 0, cols, title,
                             SOLAR_OS_TUI_ATTR_INVERSE | SOLAR_OS_TUI_ATTR_BOLD);
     const size_t left_width = cols / 2U;
-    const size_t footer_rows = solar_os_tui_screen_fullscreen(&ftp_app.tui) ?
-        (ftp_app.input_mode != FTP_APP_INPUT_NONE ? 1U : 0U) : 2U;
-    const size_t pane_height = rows > 1U + footer_rows ?
-        rows - 1U - footer_rows : 1U;
+    const size_t pane_height = rows - 3U;
     ftp_app_draw_pane(&ftp_app.panes[0], 0, 1, 0, pane_height, left_width);
     ftp_app_draw_pane(&ftp_app.panes[1], 1, 1, left_width,
                       pane_height, cols - left_width);
-    const size_t message_row = rows - (solar_os_tui_screen_fullscreen(&ftp_app.tui) ? 1U : 2U);
-    if (solar_os_tui_screen_fullscreen(&ftp_app.tui) &&
-        ftp_app.input_mode == FTP_APP_INPUT_NONE) {
-        solar_os_tui_draw_footer(&ftp_app.tui, ftp_app.message, NULL);
-        ftp_app_draw_progress(rows, cols);
-        solar_os_tui_refresh(&ftp_app.tui);
-        return;
-    }
+    const size_t message_row = rows - 2U;
     solar_os_tui_fill(&ftp_app.tui, message_row, 0, 1, cols, ' ',
                       SOLAR_OS_TUI_ATTR_NORMAL);
     if (ftp_app.input_mode == FTP_APP_INPUT_MKDIR) {

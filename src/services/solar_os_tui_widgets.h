@@ -33,25 +33,7 @@ typedef enum {
     SOLAR_OS_TUI_INPUT_CANCEL,
 } solar_os_tui_input_action_t;
 
-typedef enum {
-    SOLAR_OS_TUI_SCREEN_KEY_NONE,
-    SOLAR_OS_TUI_SCREEN_KEY_CONSUMED,
-    SOLAR_OS_TUI_SCREEN_KEY_PASSTHROUGH,
-    SOLAR_OS_TUI_SCREEN_KEY_TOGGLED,
-} solar_os_tui_screen_key_action_t;
-
 esp_err_t solar_os_tui_screen_begin(solar_os_tui_t *tui, solar_os_context_t *ctx);
-bool solar_os_tui_screen_should_fullscreen(size_t rows);
-bool solar_os_tui_screen_fullscreen(const solar_os_tui_t *tui);
-size_t solar_os_tui_screen_bottom_rows(const solar_os_tui_t *tui,
-                                       size_t normal_rows);
-size_t solar_os_tui_screen_content_rows(const solar_os_tui_t *tui,
-                                        size_t top_rows,
-                                        size_t normal_bottom_rows);
-size_t solar_os_tui_screen_content_end(const solar_os_tui_t *tui,
-                                       size_t normal_bottom_rows);
-solar_os_tui_screen_key_action_t solar_os_tui_screen_key(solar_os_tui_t *tui,
-                                                         uint8_t key);
 bool solar_os_tui_screen_layout(const solar_os_tui_t *tui,
                                 size_t tab_rows,
                                 size_t status_rows,
@@ -63,11 +45,6 @@ bool solar_os_tui_layout_compute(size_t rows,
                                  size_t status_rows,
                                  size_t input_rows,
                                  solar_os_tui_screen_layout_t *layout);
-bool solar_os_tui_layout_compute_fullscreen(size_t rows,
-                                            size_t cols,
-                                            size_t tab_rows,
-                                            size_t input_rows,
-                                            solar_os_tui_screen_layout_t *layout);
 esp_err_t solar_os_tui_write_cell(solar_os_tui_t *tui,
                                   size_t row,
                                   size_t col,
@@ -78,9 +55,6 @@ esp_err_t solar_os_tui_draw_title(solar_os_tui_t *tui,
                                   const char *title,
                                   const char *detail);
 esp_err_t solar_os_tui_draw_help(solar_os_tui_t *tui, const char *text);
-esp_err_t solar_os_tui_draw_footer(solar_os_tui_t *tui,
-                                   const char *status,
-                                   const char *help);
 esp_err_t solar_os_tui_draw_tab(solar_os_tui_t *tui,
                                 size_t row,
                                 size_t col,
