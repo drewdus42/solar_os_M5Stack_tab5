@@ -1,8 +1,13 @@
 # M5Stack Tab5 Port of SolarOS
 
-Vibe Coded
+Vibe Coded.
+
+I'm a programmer, but new to micro controllers, so AI is helping fill the gaps.
+
 It is up and running with Screen, HW Keyboard, Wifi and SDCard all working so far.
+
 More to come...
+Implementing each HW specific feature of the Tab5 one by one. 
 
 # SolarOS
 
